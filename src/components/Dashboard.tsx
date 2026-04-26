@@ -188,6 +188,10 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
     ? [...videoHistory].sort((a, b) => b.quantidade - a.quantidade)[0]
     : null;
 
+  const videoChartData = Array.from({ length: 14 }).map((_, i) => {
+    const d = subDays(new Date(), 13 - i);
+    const dayStr = format(d, 'yyyy-MM-dd');
+    const record = videoHistory.find(v => v.data === dayStr);
     return {
       name: format(d, 'dd/MM'),
       quantidade: record ? record.quantidade : 0
