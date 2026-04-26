@@ -63,16 +63,28 @@ export default function Cortes() {
 
   // Load data via subscription
   useEffect(() => {
+    let active = true;
+    
+    // Safety timeout: if data doesn't load in 5 seconds, show what we have
+    const timer = setTimeout(() => {
+      if (active) setLoading(false);
+    }, 5000);
+
     const unsubscribeClips = storage.subscribeClips((data) => {
-      setClips(data);
+      if (active) setClips(data);
     });
     
     const unsubscribeLinks = storage.subscribeClipLinks((data) => {
-      setClipLinks(data);
-      setLoading(false);
+      if (active) {
+        setClipLinks(data);
+        setLoading(false);
+        clearTimeout(timer);
+      }
     });
 
     return () => {
+      active = false;
+      clearTimeout(timer);
       unsubscribeClips();
       unsubscribeLinks();
     };

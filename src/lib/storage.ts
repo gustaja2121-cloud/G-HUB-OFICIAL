@@ -345,40 +345,56 @@ export const storage = {
     });
   },
 
-  // Clip Links
+  // Clip Links (LocalStorage for stability)
   getClipLinks: async (): Promise<ClipLink[]> => {
     try {
-      const q = query(collection(db, COLLECTIONS.CLIP_LINKS), where('userId', '==', getUserId()));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLink));
+      const saved = localStorage.getItem('ghub_clip_links_v1');
+      if (saved) return JSON.parse(saved);
+      return [];
     } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.CLIP_LINKS);
+      console.error('Error loading clip links:', e);
+      return [];
     }
   },
   saveClipLink: async (link: ClipLink) => {
     try {
-      const userId = getUserId();
-      await setDoc(doc(db, COLLECTIONS.CLIP_LINKS, link.id), { 
-        ...link, 
-        userId,
-        updatedAt: serverTimestamp() 
-      });
+      const links = await storage.getClipLinks();
+      const index = links.findIndex(l => l.id === link.id);
+      let newLinks;
+      if (index >= 0) {
+        newLinks = [...links];
+        newLinks[index] = link;
+      } else {
+        newLinks = [link, ...links];
+      }
+      localStorage.setItem('ghub_clip_links_v1', JSON.stringify(newLinks));
       await storage.addXP(15);
+      
+      // Trigger a storage event for local "subscription" feel if needed
+      window.dispatchEvent(new Event('storage_clip_links_updated'));
     } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.CLIP_LINKS);
+      console.error('Error saving clip link:', e);
     }
   },
   deleteClipLink: async (id: string) => {
     try {
-      await deleteDoc(doc(db, COLLECTIONS.CLIP_LINKS, id));
+      const links = await storage.getClipLinks();
+      const newLinks = links.filter(l => l.id !== id);
+      localStorage.setItem('ghub_clip_links_v1', JSON.stringify(newLinks));
+      window.dispatchEvent(new Event('storage_clip_links_updated'));
     } catch (e) {
-      handleFirestoreError(e, 'delete', COLLECTIONS.CLIP_LINKS);
+      console.error('Error deleting clip link:', e);
     }
   },
   subscribeClipLinks: (callback: (links: ClipLink[]) => void) => {
-    const q = query(collection(db, COLLECTIONS.CLIP_LINKS), where('userId', '==', getUserId()));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLink)));
-    });
+    const handler = async () => {
+      const links = await storage.getClipLinks();
+      callback(links);
+    };
+    
+    window.addEventListener('storage_clip_links_updated', handler);
+    handler(); // Initial call
+    
+    return () => window.removeEventListener('storage_clip_links_updated', handler);
   },
 };
