@@ -16,8 +16,7 @@ import {
   Lightbulb,
   Loader2,
   Scissors,
-  Lock,
-  Bot
+  Lock
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Notes from './components/Notes';
@@ -25,7 +24,6 @@ import Login from './components/Login';
 import Finance from './components/Finance';
 import Cortes from './components/Cortes';
 import Accounts from './components/Accounts';
-import Jarvas from './components/Jarvas';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
 import { useAuth } from './lib/AuthContext';
@@ -33,7 +31,7 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useEffect } from 'react';
 
-type Tab = 'dashboard' | 'jarvas' | 'notes' | 'finance' | 'cortes' | 'accounts';
+type Tab = 'dashboard' | 'notes' | 'finance' | 'cortes' | 'accounts';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -54,7 +52,6 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Painel', icon: <LayoutDashboard size={20} /> },
-    { id: 'jarvas', label: 'Jarvas', icon: <Bot size={20} /> },
     { id: 'cortes', label: 'Cortes', icon: <Scissors size={20} /> },
     { id: 'finance', label: 'Financeiro', icon: <DollarSign size={20} /> },
     { id: 'accounts', label: 'Contas', icon: <Lock size={20} /> },
@@ -65,7 +62,6 @@ export default function App() {
     const commonProps = { onNavigate: setActiveTab };
     switch (activeTab) {
       case 'dashboard': return <Dashboard {...commonProps} />;
-      case 'jarvas': return <Jarvas />;
       case 'notes': return <Notes {...commonProps} />;
       case 'finance': return <Finance {...commonProps} />;
       case 'cortes': return <Cortes />;
@@ -174,7 +170,7 @@ export default function App() {
 
         {/* Bottom Nav for Mobile */}
         <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-surface/80 backdrop-blur-2xl border border-white/5 px-6 py-4 rounded-[2.5rem] flex justify-between items-center z-50 shadow-2xl">
-          {navItems.filter(i => ['dashboard', 'jarvas', 'cortes', 'accounts'].includes(i.id)).map(item => (
+          {navItems.filter(i => ['dashboard', 'cortes', 'accounts'].includes(i.id)).map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
