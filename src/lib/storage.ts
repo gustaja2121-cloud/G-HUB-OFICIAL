@@ -31,6 +31,7 @@ const COLLECTIONS = {
   CLIPS: 'clips',
   VIDEO_PERFORMANCE: 'videoPerformance',
   ACCOUNTS: 'accounts',
+  CLIP_LINKS: 'clipLinks',
 };
 
 const getUserId = () => {
@@ -341,6 +342,43 @@ export const storage = {
     const q = query(collection(db, COLLECTIONS.CLIPS), where('userId', '==', getUserId()));
     return onSnapshot(q, (snap) => {
       callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLog)));
+    });
+  },
+
+  // Clip Links
+  getClipLinks: async (): Promise<ClipLink[]> => {
+    try {
+      const q = query(collection(db, COLLECTIONS.CLIP_LINKS), where('userId', '==', getUserId()));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLink));
+    } catch (e) {
+      return handleFirestoreError(e, 'list', COLLECTIONS.CLIP_LINKS);
+    }
+  },
+  saveClipLink: async (link: ClipLink) => {
+    try {
+      const userId = getUserId();
+      await setDoc(doc(db, COLLECTIONS.CLIP_LINKS, link.id), { 
+        ...link, 
+        userId,
+        updatedAt: serverTimestamp() 
+      });
+      await storage.addXP(15);
+    } catch (e) {
+      handleFirestoreError(e, 'write', COLLECTIONS.CLIP_LINKS);
+    }
+  },
+  deleteClipLink: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.CLIP_LINKS, id));
+    } catch (e) {
+      handleFirestoreError(e, 'delete', COLLECTIONS.CLIP_LINKS);
+    }
+  },
+  subscribeClipLinks: (callback: (links: ClipLink[]) => void) => {
+    const q = query(collection(db, COLLECTIONS.CLIP_LINKS), where('userId', '==', getUserId()));
+    return onSnapshot(q, (snap) => {
+      callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLink)));
     });
   },
 };

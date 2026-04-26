@@ -60,3 +60,12 @@ export interface Account {
   userId: string;
   updatedAt?: any;
 }
+
+export interface ClipLink {
+  id: string;
+  title: string;
+  rawUrl?: string;
+  editedUrl?: string;
+  status: 'ideia' | 'editando' | 'pronto' | 'postado';
+  createdAt: string;
+}

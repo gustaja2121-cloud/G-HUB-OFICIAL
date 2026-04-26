@@ -11,7 +11,10 @@ import {
   Tooltip, 
   ResponsiveContainer,
   BarChart,
-  Bar
+  Bar,
+  ComposedChart,
+  Line,
+  Legend
 } from 'recharts';
 import { 
   TrendingUp,
@@ -185,13 +188,27 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
     ? [...videoHistory].sort((a, b) => b.quantidade - a.quantidade)[0]
     : null;
 
-  const videoChartData = Array.from({ length: 14 }).map((_, i) => {
-    const d = subDays(new Date(), 13 - i);
-    const dayStr = format(d, 'yyyy-MM-dd');
-    const record = videoHistory.find(v => v.data === dayStr);
     return {
       name: format(d, 'dd/MM'),
       quantidade: record ? record.quantidade : 0
+    };
+  });
+
+  const correlationData = Array.from({ length: 14 }).map((_, i) => {
+    const d = subDays(new Date(), 13 - i);
+    const dayStr = format(d, 'yyyy-MM-dd');
+    
+    // Finance for this day
+    const dayFinance = finance.filter(f => isSameDay(new Date(f.date), d))
+      .reduce((acc, curr) => acc + curr.amount, 0);
+    
+    // Videos for this day
+    const dayVideos = videoHistory.find(v => v.data === dayStr)?.quantidade || 0;
+
+    return {
+      name: format(d, 'dd/MM'),
+      faturamento: dayFinance,
+      postagens: dayVideos
     };
   });
 
@@ -548,7 +565,94 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
              Sincronização de Protocolo Completa <CheckCircle size={10} /> {format(new Date(), "HH:mm:ss")}
           </div>
         </motion.div>
+
+        {/* Strategic Correlation Chart (Idea 3) */}
+        <motion.div variants={itemVariants} className="lg:col-span-4 premium-card flex flex-col gap-10 overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+            <div>
+              <div className="flex items-center gap-3 text-accent mb-2">
+                <ChartBar size={24} />
+                <h3 className="text-3xl font-black uppercase tracking-tighter gradient-text">Correlação Estratégica</h3>
+              </div>
+              <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60">Visão de ROI: Esforço de Postagem vs. Retorno Financeiro</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl">
+                 <div className="w-2 h-2 bg-accent rounded-full" />
+                 <span className="text-[10px] font-black uppercase text-white tracking-widest">Esforço (Cortes)</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl">
+                 <div className="w-2 h-2 bg-green-500 rounded-full" />
+                 <span className="text-[10px] font-black uppercase text-white tracking-widest">Retorno (R$)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[400px] w-full mt-auto relative z-10">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={correlationData}>
+                <defs>
+                  <linearGradient id="effortGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#E63946" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#E63946" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="10 10" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                <XAxis dataKey="name" stroke="#4a4a4a" fontSize={11} fontWeight={900} tickLine={false} axisLine={false} dy={15} />
+                <YAxis yAxisId="left" hide />
+                <YAxis yAxisId="right" orientation="right" hide />
+                <Tooltip 
+                  cursor={{ stroke: 'rgba(255,255,255,0.05)', strokeWidth: 40 }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-surface/95 backdrop-blur-3xl border border-white/10 p-6 rounded-3xl shadow-premium min-w-[240px]">
+                          <p className="text-[10px] font-black text-text-dim uppercase tracking-widest mb-4 border-b border-white/5 pb-2">{label}</p>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center text-accent"><Video size={16} /></div>
+                                <span className="text-[10px] font-black uppercase text-text-dim">Postagens</span>
+                              </div>
+                              <span className="text-xl font-black text-white">{payload[0].value}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center text-green-500"><DollarSign size={16} /></div>
+                                <span className="text-[10px] font-black uppercase text-text-dim">Receita</span>
+                              </div>
+                              <span className="text-xl font-black text-green-400">R$ {payload[1].value.toLocaleString('pt-BR')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="postagens" 
+                  fill="url(#effortGrad)" 
+                  stroke="#E63946" 
+                  strokeWidth={4}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="faturamento" 
+                  stroke="#22c55e" 
+                  strokeWidth={4} 
+                  dot={{ r: 4, fill: '#22c55e', strokeWidth: 2, stroke: '#121212' }}
+                  activeDot={{ r: 8, strokeWidth: 0 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
       </motion.div>
     </div>
+
   );
 }

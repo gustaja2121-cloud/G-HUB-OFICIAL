@@ -13,7 +13,11 @@ import {
   Trash2,
   FileText,
   Loader2,
-  ArrowUp
+  ArrowUp,
+  Link as LinkIcon,
+  ExternalLink,
+  ChevronRight,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -36,7 +40,7 @@ import {
   max
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ClipLog } from '../types';
+import { ClipLog, ClipLink } from '../types';
 import { cn } from '../lib/utils';
 import { useToast } from './Toast';
 import { storage } from '../lib/storage';
@@ -44,19 +48,79 @@ import { storage } from '../lib/storage';
 export default function Cortes() {
   const { showToast } = useToast();
   const [clips, setClips] = useState<ClipLog[]>([]);
+  const [clipLinks, setClipLinks] = useState<ClipLink[]>([]);
   const [quantidade, setQuantidade] = useState<string>('');
   const [dataEscolhida, setDataEscolhida] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  
+  // Link Manager State
+  const [linkTitle, setLinkTitle] = useState('');
+  const [rawUrl, setRawUrl] = useState('');
+  const [editedUrl, setEditedUrl] = useState('');
+  const [linkStatus, setLinkStatus] = useState<ClipLink['status']>('ideia');
+  
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Load data via subscription
   useEffect(() => {
-    const unsubscribe = storage.subscribeClips((data) => {
+    const unsubscribeClips = storage.subscribeClips((data) => {
       setClips(data);
+    });
+    
+    const unsubscribeLinks = storage.subscribeClipLinks((data) => {
+      setClipLinks(data);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeClips();
+      unsubscribeLinks();
+    };
   }, []);
+
+  const handleAddLink = async () => {
+    if (!linkTitle) {
+      showToast('O título é obrigatório');
+      return;
+    }
+
+    try {
+      await storage.saveClipLink({
+        id: Math.random().toString(36).substring(2, 9),
+        title: linkTitle,
+        rawUrl,
+        editedUrl,
+        status: linkStatus,
+        createdAt: new Date().toISOString()
+      });
+      
+      showToast('Link arquivado com sucesso!');
+      setLinkTitle('');
+      setRawUrl('');
+      setEditedUrl('');
+      setLinkStatus('ideia');
+    } catch (e) {
+      showToast('Erro ao salvar link');
+    }
+  };
+
+  const handleDeleteLink = async (id: string) => {
+    try {
+      await storage.deleteClipLink(id);
+      showToast('Link removido');
+    } catch (e) {
+      showToast('Erro ao remover link');
+    }
+  };
+
+  const updateLinkStatus = async (link: ClipLink, status: ClipLink['status']) => {
+    try {
+      await storage.saveClipLink({ ...link, status });
+      showToast(`Status atualizado para ${status}`);
+    } catch (e) {
+      showToast('Erro ao atualizar status');
+    }
+  };
 
   const handleAddClips = async () => {
     const num = parseInt(quantidade);
@@ -455,6 +519,177 @@ export default function Cortes() {
           </div>
         </motion.div>
       </div>
+
+      {/* Video Link Manager Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="space-y-8"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+            <LinkIcon size={24} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-black uppercase tracking-tighter gradient-text">Gerenciador de Ativos</h2>
+            <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.4em] opacity-60">Arquivamento de Vídeos e Links</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Form Card */}
+          <div className="xl:col-span-1 premium-card space-y-6">
+            <div className="space-y-4">
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Título do Vídeo</label>
+                 <input 
+                   type="text" 
+                   value={linkTitle}
+                   onChange={e => setLinkTitle(e.target.value)}
+                   placeholder="Ex: Flow Podcast #15"
+                   className="h-12 bg-bg border border-white/5 rounded-xl px-4 text-sm font-bold text-white outline-none focus:border-accent transition-all"
+                 />
+               </div>
+               
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Link Bruto (Drive/Raw)</label>
+                 <input 
+                   type="url" 
+                   value={rawUrl}
+                   onChange={e => setRawUrl(e.target.value)}
+                   placeholder="https://drive.google.com/..."
+                   className="h-12 bg-bg border border-white/5 rounded-xl px-4 text-xs font-mono text-white/60 outline-none focus:border-accent transition-all"
+                 />
+               </div>
+
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Link Editado (Final)</label>
+                 <input 
+                   type="url" 
+                   value={editedUrl}
+                   onChange={e => setEditedUrl(e.target.value)}
+                   placeholder="https://youtube.com/..."
+                   className="h-12 bg-bg border border-white/5 rounded-xl px-4 text-xs font-mono text-white/60 outline-none focus:border-accent transition-all"
+                 />
+               </div>
+
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Status Operacional</label>
+                 <select 
+                   value={linkStatus}
+                   onChange={e => setLinkStatus(e.target.value as any)}
+                   className="h-12 bg-bg border border-white/5 rounded-xl px-4 text-[10px] font-black uppercase text-white outline-none focus:border-accent transition-all appearance-none cursor-pointer"
+                 >
+                   <option value="ideia">Ideia</option>
+                   <option value="editando">Editando</option>
+                   <option value="pronto">Pronto</option>
+                   <option value="postado">Postado</option>
+                 </select>
+               </div>
+            </div>
+
+            <button 
+              onClick={handleAddLink}
+              className="w-full h-14 bg-accent text-white rounded-xl font-black uppercase tracking-[0.2em] text-[11px] shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <Plus size={18} />
+              Arquivar Vídeo
+            </button>
+          </div>
+
+          {/* List Card */}
+          <div className="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <AnimatePresence mode="popLayout">
+              {clipLinks.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((link) => (
+                <motion.div
+                  key={link.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="premium-card group relative flex flex-col justify-between"
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center border",
+                        link.status === 'postado' ? "bg-green-500/10 border-green-500/20 text-green-400" :
+                        link.status === 'pronto' ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
+                        link.status === 'editando' ? "bg-accent/10 border-accent/20 text-accent" :
+                        "bg-white/5 border-white/10 text-text-dim"
+                      )}>
+                        {link.status === 'postado' ? <CheckCircle2 size={20} /> : <Video size={20} />}
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black uppercase tracking-tight text-white group-hover:text-accent transition-colors">{link.title}</h4>
+                        <p className="text-[9px] font-black text-text-dim uppercase tracking-widest opacity-40">{format(parseISO(link.createdAt), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => handleDeleteLink(link.id)}
+                      className="p-2 text-text-dim hover:text-accent opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <a 
+                      href={link.rawUrl} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className={cn(
+                        "flex items-center justify-center gap-2 h-10 rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest transition-all",
+                        link.rawUrl ? "bg-white/5 text-white hover:bg-white/10" : "opacity-20 cursor-not-allowed"
+                      )}
+                    >
+                      Bruto <ExternalLink size={12} />
+                    </a>
+                    <a 
+                      href={link.editedUrl} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className={cn(
+                        "flex items-center justify-center gap-2 h-10 rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest transition-all",
+                        link.editedUrl ? "bg-accent/10 border-accent/20 text-accent hover:bg-accent/20" : "opacity-20 cursor-not-allowed"
+                      )}
+                    >
+                      Final <ExternalLink size={12} />
+                    </a>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-1.5">
+                      {['ideia', 'editando', 'pronto', 'postado'].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => updateLinkStatus(link, s as any)}
+                          className={cn(
+                            "w-2 h-2 rounded-full transition-all",
+                            link.status === s ? "bg-accent scale-150 shadow-glow" : "bg-white/10 hover:bg-white/30"
+                          )}
+                          title={s.toUpperCase()}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-accent italic">{link.status}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {clipLinks.length === 0 && (
+              <div className="md:col-span-2 py-20 border border-dashed border-white/5 rounded-4xl flex flex-col items-center justify-center gap-4 text-text-dim">
+                <LinkIcon size={40} className="opacity-10" />
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Nenhum vídeo arquivado no sistema</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </div>
+
   );
 }
