@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /system/health {
+      allow read: if true;
+    }
+
+    // --- Helper Functions (Pillar 3 & 4) ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- Validation Blueprints (Pillar 2) ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['streak', 'lastActiveDate', 'totalVideosCreated', 'totalVideosPosted', 'xp', 'level', 'lastResetDate']) &&
+             data.streak is number && data.xp is number && data.level is number &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['title', 'status', 'createdAt', 'userId']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.status in ['A postar', 'Postado', 'Ideia', 'Em edição'] &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasAll(['title', 'createdAt', 'userId']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidScript(data) {
+      return data.keys().hasAll(['title', 'content', 'createdAt', 'userId']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 50000 &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidChecklistTask(data) {
+      return data.keys().hasAll(['title', 'completed', 'type', 'userId']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.completed is bool &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidFinance(data) {
+      return data.keys().hasAll(['amount', 'description', 'date', 'userId']) &&
+             data.amount is number && data.userId == request.auth.uid;
+    }
+
+    function isValidFinanceUpdate(data) {
+       return data.keys().hasAll(['amount', 'description', 'date', 'userId']) &&
+             data.amount is number && data.userId == request.auth.uid;
+    }
+
+    function isValidSchedule(data) {
+      return data.keys().hasAll(['videoId', 'platform', 'scheduledAt', 'userId']) &&
+             data.videoId is string && data.platform is string &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidClip(data) {
+      return data.keys().hasAll(['data', 'quantidade', 'userId']) &&
+             data.data is string && data.quantidade is number &&
+             data.userId == request.auth.uid;
+    }
+
+    // --- Collections ---
+
+    // Pillar 6: PII Isolation - Profile only accessible by owner
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isVerified() && isValidUser(incoming());
+      allow update: if isOwner(userId) && isVerified() && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['streak', 'lastActiveDate', 'totalVideosCreated', 'totalVideosPosted', 'xp', 'level', 'lastResetDate', 'updatedAt'])
+      );
+    }
+
+    // Pillar 8: Secure List Queries - Explicit resource.data check
+    match /videos/{videoId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(videoId) && isValidVideo(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidVideo(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+
+    match /notes/{noteId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(noteId) && isValidNote(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidNote(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+
+    match /scripts/{scriptId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(scriptId) && isValidScript(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidScript(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+
+    match /dailyChecklist/{checklistId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(checklistId) && isValidChecklistTask(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidChecklistTask(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+
+    match /finance/{financeId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(financeId) && isValidFinance(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidFinance(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+
+    match /schedule/{postId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(postId) && isValidSchedule(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidSchedule(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+
+    match /clips/{clipId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(clipId) && isValidClip(incoming());
+      allow update: if isVerified() && resource.data.userId == request.auth.uid && isValidClip(incoming()) && (
+        incoming().userId == existing().userId
+      );
+      allow delete: if isVerified() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

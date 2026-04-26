@@ -1,0 +1,214 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /system/health {
+      allow read: if true;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['streak', 'lastActiveDate', 'totalVideosCreated', 'totalVideosPosted', 'xp', 'level', 'lastResetDate', 'userId']) &&
+             data.keys().size() <= 9 &&
+             data.streak is number && data.xp is number && data.level is number &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['title', 'status', 'createdAt', 'userId']) &&
+             data.keys().size() <= 10 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.status in ['A postar', 'Postado', 'Ideia', 'Em edição'] &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasAll(['title', 'createdAt', 'userId']) &&
+             data.keys().size() <= 6 &&
+             data.title is string && data.title.size() <= 500 &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidScript(data) {
+      return data.keys().hasAll(['title', 'content', 'createdAt', 'userId']) &&
+             data.keys().size() <= 7 &&
+             data.title is string && data.title.size() <= 500 &&
+             data.content is string && data.content.size() <= 100000 &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidChecklistTask(data) {
+      return data.keys().hasAll(['title', 'completed', 'type', 'userId']) &&
+             data.keys().size() <= 6 &&
+             data.title is string && data.title.size() <= 500 &&
+             data.completed is bool &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidFinance(data) {
+      return data.keys().hasAll(['amount', 'description', 'date', 'userId']) &&
+             data.keys().size() <= 6 &&
+             data.amount is number && data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidSchedule(data) {
+      return data.keys().hasAll(['videoId', 'platform', 'scheduledAt', 'userId']) &&
+             data.keys().size() <= 8 &&
+             data.videoId is string && data.platform is string &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidClip(data) {
+      return data.keys().hasAll(['data', 'quantidade', 'userId']) &&
+             data.keys().size() <= 5 &&
+             data.data is string && data.quantidade is number &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidVideoPerformance(data) {
+      return data.keys().hasAll(['data', 'quantidade', 'userId']) &&
+             data.keys().size() <= 5 &&
+             data.data is string && data.quantidade is number &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    function isValidAccount(data) {
+      return data.keys().hasAll(['platform', 'login', 'userId']) &&
+             data.keys().size() <= 8 &&
+             data.platform is string && data.platform.size() <= 100 &&
+             data.login is string && data.login.size() <= 200 &&
+             data.userId == request.auth.uid &&
+             (data.get('updatedAt', null) == null || data.updatedAt == request.time);
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isVerified() && isValidUser(incoming());
+      allow update: if isOwner(userId) && isVerified() && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['streak', 'lastActiveDate', 'totalVideosCreated', 'totalVideosPosted', 'xp', 'level', 'lastResetDate', 'updatedAt'])
+      );
+    }
+
+    match /videos/{videoId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(videoId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(videoId) && isValidVideo(incoming());
+      allow update: if isVerified() && isValidId(videoId) && resource.data.userId == request.auth.uid && isValidVideo(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'status', 'isImportant', 'url', 'scriptId'])
+      );
+      allow delete: if isVerified() && isValidId(videoId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /notes/{noteId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(noteId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(noteId) && isValidNote(incoming());
+      allow update: if isVerified() && isValidId(noteId) && resource.data.userId == request.auth.uid && isValidNote(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(noteId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /scripts/{scriptId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(scriptId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(scriptId) && isValidScript(incoming());
+      allow update: if isVerified() && isValidId(scriptId) && resource.data.userId == request.auth.uid && isValidScript(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'videoId', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(scriptId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /dailyChecklist/{checklistId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(checklistId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(checklistId) && isValidChecklistTask(incoming());
+      allow update: if isVerified() && isValidId(checklistId) && resource.data.userId == request.auth.uid && isValidChecklistTask(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'completed', 'type', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(checklistId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /finance/{financeId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(financeId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(financeId) && isValidFinance(incoming());
+      allow update: if isVerified() && isValidId(financeId) && resource.data.userId == request.auth.uid && isValidFinance(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'description', 'date', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(financeId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /schedule/{postId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(postId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(postId) && isValidSchedule(incoming());
+      allow update: if isVerified() && isValidId(postId) && resource.data.userId == request.auth.uid && isValidSchedule(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['videoId', 'platform', 'scheduledAt', 'isPosted', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(postId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /clips/{clipId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(clipId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(clipId) && isValidClip(incoming());
+      allow update: if isVerified() && isValidId(clipId) && resource.data.userId == request.auth.uid && isValidClip(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['data', 'quantidade', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(clipId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /videoPerformance/{perfId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(perfId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(perfId) && isValidVideoPerformance(incoming());
+      allow update: if isVerified() && isValidId(perfId) && resource.data.userId == request.auth.uid && isValidVideoPerformance(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['data', 'quantidade', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(perfId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /accounts/{accountId} {
+      allow list: if isVerified() && resource.data.userId == request.auth.uid;
+      allow get: if isVerified() && isValidId(accountId) && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(accountId) && isValidAccount(incoming());
+      allow update: if isVerified() && isValidId(accountId) && resource.data.userId == request.auth.uid && isValidAccount(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['platform', 'login', 'password', 'url', 'notes', 'updatedAt'])
+      );
+      allow delete: if isVerified() && isValidId(accountId) && resource.data.userId == request.auth.uid;
+    }
+  }
+}

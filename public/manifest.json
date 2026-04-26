@@ -1,0 +1,21 @@
+{
+  "name": "G-HUB Estratégico",
+  "short_name": "G-HUB",
+  "description": "Hub de gestão estratégica de alta performance.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/ghub-icon/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/ghub-icon/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

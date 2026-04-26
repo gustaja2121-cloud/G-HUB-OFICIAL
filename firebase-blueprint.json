@@ -1,0 +1,170 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User performance and settings",
+      "type": "object",
+      "properties": {
+        "streak": { "type": "number" },
+        "lastActiveDate": { "type": "string" },
+        "totalVideosCreated": { "type": "number" },
+        "totalVideosPosted": { "type": "number" },
+        "xp": { "type": "number" },
+        "level": { "type": "number" },
+        "lastResetDate": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Video": {
+      "title": "Video",
+      "description": "Video assets",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isImportant": { "type": "boolean" },
+        "url": { "type": "string" },
+        "scriptId": { "type": "string" },
+        "userId": { "type": "string" }
+      }
+    },
+    "Note": {
+      "title": "Note",
+      "description": "User notes",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      }
+    },
+    "Script": {
+      "title": "Script",
+      "description": "Video scripts",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "videoId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      }
+    },
+    "DailyChecklistTask": {
+      "title": "Daily Checklist Item",
+      "description": "Items for daily consistency",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "type": { "type": "string" },
+        "userId": { "type": "string" }
+      }
+    },
+    "FinanceEntry": {
+      "title": "Finance Entry",
+      "description": "Income records",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "userId": { "type": "string" }
+      }
+    },
+    "ScheduledPost": {
+      "title": "Scheduled Post",
+      "description": "Calendar posts",
+      "type": "object",
+      "properties": {
+        "videoId": { "type": "string" },
+        "platform": { "type": "string" },
+        "scheduledAt": { "type": "string", "format": "date-time" },
+        "isPosted": { "type": "boolean" },
+        "userId": { "type": "string" }
+      }
+    },
+    "ClipLog": {
+      "title": "Clip Log",
+      "description": "Daily recording of produced cuts",
+      "type": "object",
+      "properties": {
+        "data": { "type": "string" },
+        "quantidade": { "type": "number" },
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "VideoPerformance": {
+      "title": "Video Performance",
+      "description": "Daily video post metrics",
+      "type": "object",
+      "properties": {
+        "data": { "type": "string" },
+        "quantidade": { "type": "number" },
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Account": {
+      "title": "Account",
+      "description": "User login credentials for various platforms",
+      "type": "object",
+      "properties": {
+        "platform": { "type": "string" },
+        "login": { "type": "string" },
+        "password": { "type": "string" },
+        "url": { "type": "string" },
+        "notes": { "type": "string" },
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Main user performance data"
+    },
+    "/videos/{videoId}": {
+      "schema": "Video",
+      "description": "User videos"
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User notes"
+    },
+    "/scripts/{scriptId}": {
+      "schema": "Script",
+      "description": "User scripts"
+    },
+    "/dailyChecklist/{checklistId}": {
+      "schema": "DailyChecklistTask",
+      "description": "User daily checklist"
+    },
+    "/finance/{financeId}": {
+      "schema": "FinanceEntry",
+      "description": "User financial entries"
+    },
+    "/schedule/{postId}": {
+      "schema": "ScheduledPost",
+      "description": "User post schedule"
+    },
+    "/clips/{clipId}": {
+      "schema": "ClipLog",
+      "description": "User produced cuts log"
+    },
+    "/videoPerformance/{perfId}": {
+      "schema": "VideoPerformance",
+      "description": "Chronological video performance logs"
+    },
+    "/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "User login credentials"
+    }
+  }
+}

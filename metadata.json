@@ -1,0 +1,8 @@
+{
+  "name": "G-HUB Estratégico atualizado",
+  "description": "Central de gerenciamento de alto desempenho para criadores de conteúdo.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
