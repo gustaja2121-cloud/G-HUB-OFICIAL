@@ -64,8 +64,9 @@ export default function App() {
       case 'dashboard': return <Dashboard {...commonProps} />;
       case 'notes': return <Notes {...commonProps} />;
       case 'finance': return <Finance {...commonProps} />;
-      case 'cortes': return <Cortes />;
-      case 'accounts': return <Accounts />;
+      case 'cortes': return <Cortes {...commonProps} />;
+      case 'accounts': return <Accounts {...commonProps} />;
+      default: return <Dashboard {...commonProps} />;
     }
   };
 
@@ -170,7 +171,7 @@ export default function App() {
 
         {/* Bottom Nav for Mobile */}
         <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-surface/80 backdrop-blur-2xl border border-white/5 px-6 py-4 rounded-[2.5rem] flex justify-between items-center z-50 shadow-2xl">
-          {navItems.filter(i => ['dashboard', 'cortes', 'accounts'].includes(i.id)).map(item => (
+          {navItems.map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
@@ -189,6 +190,7 @@ export default function App() {
             <LogOut size={20} />
           </button>
         </nav>
+
 
         <main className="flex-1 w-full p-6 md:p-12 lg:p-16 overflow-y-auto max-h-screen custom-scrollbar selection:bg-accent/20">
           <AnimatePresence mode="wait">
