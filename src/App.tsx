@@ -55,13 +55,13 @@ export default function App() {
   }, []);
 
   const navItems = [
-    { id: 'dashboard', label: 'Painel', icon: <LayoutDashboard size={20} /> },
-    { id: 'cortes', label: 'Cortes', icon: <Scissors size={20} /> },
-    { id: 'finance', label: 'Financeiro', icon: <DollarSign size={20} /> },
-    { id: 'roi', label: 'ROI', icon: <Calculator size={20} /> },
-    { id: 'ranking', label: 'Arena', icon: <Trophy size={20} /> },
-    { id: 'accounts', label: 'Contas', icon: <Lock size={20} /> },
-    { id: 'notes', label: 'Notas', icon: <StickyNote size={20} /> },
+    { id: 'dashboard', label: '📊 PAINEL', icon: <LayoutDashboard size={20} /> },
+    { id: 'cortes', label: '🎬 CORTES', icon: <Scissors size={20} /> },
+    { id: 'finance', label: '🏦 FINANCEIRO', icon: <DollarSign size={20} /> },
+    { id: 'roi', label: '📈 ROI', icon: <Calculator size={20} /> },
+    { id: 'ranking', label: '🏆 ARENA', icon: <Trophy size={20} /> },
+    { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
+    { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
   ] as const;
 
   const renderContent = () => {
