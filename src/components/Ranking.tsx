@@ -14,7 +14,7 @@ import {
   ChevronRight,
   RefreshCw
 } from 'lucide-react';
-import { differenceInDays, endOfWeek, formatDistanceToNow, isSunday, setHours, setMinutes, setSeconds } from 'date-fns';
+import { addDays, differenceInDays, endOfWeek, formatDistanceToNow, isSunday, setHours, setMinutes, setSeconds } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Ranking() {
@@ -26,23 +26,37 @@ export default function Ranking() {
   const [calculating, setCalculating] = useState(false);
   const [showResult, setShowResult] = useState(false);
   
-  // Calculate Sunday midnight
+  // Lógica robusta para encontrar o próximo Domingo às 23:59:59
   const getNextSundayMidnight = () => {
-    let nextSunday = endOfWeek(new Date(), { weekStartsOn: 1 }); // Sunday is the end of week
-    nextSunday = setHours(nextSunday, 23);
-    nextSunday = setMinutes(nextSunday, 59);
-    nextSunday = setSeconds(nextSunday, 59);
-    return nextSunday;
+    const now = new Date();
+    // endOfWeek com weekStartsOn: 1 (Segunda) retorna o Domingo desta semana
+    let target = endOfWeek(now, { weekStartsOn: 1 });
+    target = setHours(target, 23);
+    target = setMinutes(target, 59);
+    target = setSeconds(target, 59);
+
+    // Se já passou do fechamento de hoje (caso seja domingo à noite), pula para o próximo domingo
+    if (now > target) {
+      target = addDays(target, 7);
+    }
+    return target;
   };
 
-  const [timeLeft, setTimeLeft] = useState(getNextSundayMidnight());
+  const [targetDate, setTargetDate] = useState(getNextSundayMidnight());
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(getNextSundayMidnight());
+      const currentNow = new Date();
+      setNow(currentNow);
+      
+      // Se chegamos no alvo, recalcula o próximo domingo
+      if (currentNow > targetDate) {
+        setTargetDate(getNextSundayMidnight());
+      }
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [targetDate]);
 
   const handleCalculate = () => {
     setCalculating(true);
@@ -59,9 +73,9 @@ export default function Ranking() {
     const lGrowth = parseFloat(leaderGrowth) || 0;
     const diff = leader - mine;
     
-    const now = new Date();
-    const sunday = getNextSundayMidnight();
-    const daysRemaining = Math.max(1, differenceInDays(sunday, now) + 1);
+    // Calcula dias restantes reais (frações de 24h)
+    const diffMs = targetDate.getTime() - now.getTime();
+    const daysRemaining = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     
     const projectedLeaderGrowth = lGrowth * daysRemaining;
     const totalToOvertake = diff + projectedLeaderGrowth;
@@ -77,7 +91,7 @@ export default function Ranking() {
       safetyBuffer,
       progress: leader > 0 ? Math.min((mine / leader) * 100, 100) : 0
     };
-  }, [myViews, leaderViews, leaderGrowth]);
+  }, [myViews, leaderViews, leaderGrowth, targetDate, now]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -281,10 +295,10 @@ export default function Ranking() {
            
            <div className="grid grid-cols-4 gap-6 w-full max-w-md">
              {[
-               { label: 'Dias', val: Math.floor((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) },
-               { label: 'Horas', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60)) % 24) },
-               { label: 'Min', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60)) % 60) },
-               { label: 'Seg', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / 1000) % 60) }
+               { label: 'Dias', val: Math.floor((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) },
+               { label: 'Horas', val: Math.floor(((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60)) % 24) },
+               { label: 'Min', val: Math.floor(((targetDate.getTime() - now.getTime()) / (1000 * 60)) % 60) },
+               { label: 'Seg', val: Math.floor(((targetDate.getTime() - now.getTime()) / 1000) % 60) }
              ].map((unit, i) => (
                <div key={i} className="flex flex-col items-center">
                  <div className="text-4xl md:text-5xl font-black text-white tracking-tighter tabular-nums bg-white/5 w-full py-6 rounded-3xl border border-white/5 shadow-inner">
