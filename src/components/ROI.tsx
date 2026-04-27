@@ -100,7 +100,7 @@ export default function ROI() {
   const monthRevenuePerPost = monthPosts > 0 ? monthFinance / monthPosts : 0;
 
   // New Automatic Calculations
-  const currentDay = new Date().getDate();
+  const currentDay = Math.max(1, new Date().getDate());
   const daysInMonth = 30; // Approximation
   
   const avgPostsPerDay = monthPosts / currentDay;
@@ -108,6 +108,35 @@ export default function ROI() {
   const projectedRevenue = monthRevenuePerPost * projectedPosts;
   
   const automaticTarget = Math.ceil(projectedRevenue * 1.2 / 500) * 500; // 20% upgrade rounded to nearest 500
+
+  // Simulation
+  const numericTarget = parseFloat(targetRevenue) || 0;
+  const numericCosts = parseFloat(costs) || 0;
+  const postsNeeded = monthRevenuePerPost > 0 
+    ? Math.ceil((numericTarget + numericCosts) / monthRevenuePerPost) 
+    : 0;
+
+  // Chart Data: Last 14 days ROI
+  const chartData = useMemo(() => {
+    return Array.from({ length: 14 }).map((_, i) => {
+      const date = subDays(new Date(), 13 - i);
+      const dayStr = format(date, 'yyyy-MM-dd');
+      
+      const dayFinance = finance
+        .filter(f => isSameDay(new Date(f.date), date))
+        .reduce((acc, curr) => acc + curr.amount, 0);
+        
+      const dayPosts = videoHistory.find(v => v.data === dayStr)?.quantidade || 0;
+      const dayROI = dayPosts > 0 ? dayFinance / dayPosts : 0;
+
+      return {
+        name: format(date, 'dd/MM'),
+        roi: dayROI,
+        faturamento: dayFinance,
+        postagens: dayPosts
+      };
+    });
+  }, [finance, videoHistory]);
 
   // Chart 1: Pulso de Faturamento (Daily + Cumulative)
   const cumulativeData = useMemo(() => {
