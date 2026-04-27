@@ -22,6 +22,7 @@ export default function Ranking() {
   const [myViews, setMyViews] = useState<string>('');
   const [leaderRank, setLeaderRank] = useState<string>('');
   const [leaderViews, setLeaderViews] = useState<string>('');
+  const [leaderGrowth, setLeaderGrowth] = useState<string>('');
   const [calculating, setCalculating] = useState(false);
   const [showResult, setShowResult] = useState(false);
   
@@ -55,23 +56,28 @@ export default function Ranking() {
   const results = useMemo(() => {
     const mine = parseFloat(myViews) || 0;
     const leader = parseFloat(leaderViews) || 0;
+    const lGrowth = parseFloat(leaderGrowth) || 0;
     const diff = leader - mine;
     
     const now = new Date();
     const sunday = getNextSundayMidnight();
     const daysRemaining = Math.max(1, differenceInDays(sunday, now) + 1);
     
-    const dailyNeeded = diff > 0 ? Math.ceil(diff / daysRemaining) : 0;
-    const extraToWin = Math.ceil(dailyNeeded * 1.1); // 10% more for safety
+    const projectedLeaderGrowth = lGrowth * daysRemaining;
+    const totalToOvertake = diff + projectedLeaderGrowth;
+    const dailyNeeded = totalToOvertake > 0 ? Math.ceil(totalToOvertake / daysRemaining) : 0;
+    const safetyBuffer = Math.ceil(dailyNeeded * 0.15); // 15% safety
 
     return {
       diff,
       daysRemaining,
+      projectedLeaderGrowth,
+      totalToOvertake,
       dailyNeeded,
-      extraToWin,
+      safetyBuffer,
       progress: leader > 0 ? Math.min((mine / leader) * 100, 100) : 0
     };
-  }, [myViews, leaderViews]);
+  }, [myViews, leaderViews, leaderGrowth]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -160,9 +166,9 @@ export default function Ranking() {
             {/* Dados do Adversário */}
             <div className="space-y-6">
               <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-amber-500/60 ml-4">Alvo para Ultrapassar</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="md:col-span-1 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição Alvo (#)</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição (#)</label>
                   <input 
                     type="number"
                     value={leaderRank}
@@ -172,13 +178,23 @@ export default function Ranking() {
                   />
                 </div>
                 <div className="md:col-span-2 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Views/Pontos do Adversário</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Views do Adversário</label>
                   <input 
                     type="number"
                     value={leaderViews}
                     onChange={(e) => setLeaderViews(e.target.value)}
                     className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
                     placeholder="0"
+                  />
+                </div>
+                <div className="md:col-span-1 space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Ganho Diário Est.</label>
+                  <input 
+                    type="number"
+                    value={leaderGrowth}
+                    onChange={(e) => setLeaderGrowth(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-amber-500/20 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
+                    placeholder="+10k"
                   />
                 </div>
               </div>
@@ -225,42 +241,46 @@ export default function Ranking() {
             animate={{ opacity: 1, y: 0 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
           >
-            {/* Gap de Ultrapassagem */}
-            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10 flex flex-col justify-between relative overflow-hidden">
+            {/* Gap de Ultrapassagem - PARTE AZUL */}
+            <div className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-10 flex flex-col justify-between relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
-                <Trophy size={80} />
+                <Trophy size={80} className="text-blue-500" />
               </div>
               <div className="relative z-10">
-                <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-6">Salto de Ranking</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-6">Visualizações Necessárias para Subir</div>
                 <div className="flex items-center gap-4 text-5xl font-black text-white tracking-tighter mb-4">
                   <span>{myRank || '?'}º</span>
-                  <ChevronRight className="text-red-500" />
+                  <ChevronRight className="text-blue-500" />
                   <span className="text-amber-500">{leaderRank || '?'}º</span>
                 </div>
-                <div className="text-xl font-black text-text-dim uppercase tracking-tighter">
-                  Gap: {results.diff > 0 ? results.diff.toLocaleString() : 'Superado!'}
+                <div className="text-3xl font-black text-white tracking-tighter">
+                   GAP: {results.diff > 0 ? results.diff.toLocaleString() : 'Superado!'}
                 </div>
               </div>
               <div className="h-2 w-full bg-white/5 rounded-full mt-10 overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${results.progress}%` }}
-                  className="h-full bg-gradient-to-r from-red-500 to-amber-500 shadow-glow" 
+                  className="h-full bg-gradient-to-r from-blue-500 to-amber-500 shadow-glow" 
                 />
               </div>
             </div>
 
-            {/* Plano de Ação Diário */}
-            <div className="premium-card bg-gradient-to-br from-surface to-amber-900/10 border-amber-500/20 p-10">
-              <div className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-6">Plano de Ataque Diário</div>
+            {/* Plano de Ação Diário - PARTE VERMELHA */}
+            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10">
+              <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-6">Projeção de Reação e Esforço</div>
               <div className="space-y-6">
                 <div>
-                  <div className="text-5xl font-black text-white tracking-tighter">{results.dailyNeeded.toLocaleString()}</div>
-                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Views p/ dia até domingo</div>
+                  <div className="text-4xl font-black text-amber-500 tracking-tighter">+{results.projectedLeaderGrowth.toLocaleString()}</div>
+                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Oponente deve aumentar até domingo</div>
                 </div>
                 <div className="pt-6 border-t border-white/5">
-                  <div className="text-3xl font-black text-amber-500 tracking-tighter">{results.extraToWin.toLocaleString()}</div>
-                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Ritmo Seguro (Margem de 10%)</div>
+                  <div className="text-5xl font-black text-white tracking-tighter">{results.dailyNeeded.toLocaleString()}</div>
+                  <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">Views p/ dia (Esforço de Guerra)</div>
+                </div>
+                <div className="pt-4">
+                  <div className="text-2xl font-black text-green-500 tracking-tighter">{results.safetyBuffer.toLocaleString()}</div>
+                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Extra p/ garantir (Margem de Segurança)</div>
                 </div>
               </div>
             </div>
