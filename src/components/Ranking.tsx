@@ -18,7 +18,9 @@ import { differenceInDays, endOfWeek, formatDistanceToNow, isSunday, setHours, s
 import { ptBR } from 'date-fns/locale';
 
 export default function Ranking() {
+  const [myRank, setMyRank] = useState<string>('');
   const [myViews, setMyViews] = useState<string>('');
+  const [leaderRank, setLeaderRank] = useState<string>('');
   const [leaderViews, setLeaderViews] = useState<string>('');
   const [calculating, setCalculating] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -71,6 +73,19 @@ export default function Ranking() {
     };
   }, [myViews, leaderViews]);
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-12 pb-32 pt-10 font-sans">
       {/* Header Estilo Arena */}
@@ -87,17 +102,17 @@ export default function Ranking() {
             </div>
           </div>
           
-          <div className="flex-1">
+          <div className="flex-1 text-center md:text-left">
             <h1 className="text-6xl font-black tracking-tighter leading-none mb-4 uppercase italic">
-              <span className="text-white">ARENA</span> <span className="text-red-500">DE RANKING</span>
+              <span className="text-white">ARENA</span> <span className="text-red-500">ESTRATÉGICA</span>
             </h1>
-            <div className="flex flex-wrap items-center gap-5">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-5">
               <div className="flex items-center gap-2 text-[11px] font-black text-text-dim uppercase tracking-[0.4em] opacity-60">
-                 <Zap size={14} className="text-amber-500" /> Operação Top 1 Ativada
+                 <Zap size={14} className="text-amber-500" /> Operação Top 1
               </div>
               <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
               <div className="flex items-center gap-2 text-[11px] font-black text-red-500 uppercase tracking-[0.4em]">
-                 <Timer size={14} /> Ciclo Mensal: {formatDistanceToNow(timeLeft, { locale: ptBR, addSuffix: true })}
+                 <Timer size={14} /> Ciclo Mensal Atual
               </div>
             </div>
           </div>
@@ -114,30 +129,58 @@ export default function Ranking() {
             <h3 className="text-3xl font-black uppercase tracking-tighter gradient-text">Calculadora de Ultrapassagem</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim ml-4 opacity-60">Suas Views/Pontos</label>
-              <div className="relative">
-                <input 
-                  type="number"
-                  value={myViews}
-                  onChange={(e) => setMyViews(e.target.value)}
-                  className="w-full h-20 bg-bg/50 border border-white/5 rounded-[2rem] px-8 outline-none focus:border-red-500 transition-all font-black text-3xl tracking-tighter text-white"
-                  placeholder="0"
-                />
+          <div className="space-y-12">
+            {/* Seus Dados */}
+            <div className="space-y-6">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500/60 ml-4">Sua Posição Atual</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição (#)</label>
+                  <input 
+                    type="number"
+                    value={myRank}
+                    onChange={(e) => setMyRank(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-red-500 transition-all font-black text-xl tracking-tighter text-white"
+                    placeholder="Ex: 5"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Suas Views/Pontos Totais</label>
+                  <input 
+                    type="number"
+                    value={myViews}
+                    onChange={(e) => setMyViews(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-red-500 transition-all font-black text-xl tracking-tighter text-white"
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim ml-4 opacity-60">Views/Pontos do Líder</label>
-              <div className="relative">
-                <input 
-                  type="number"
-                  value={leaderViews}
-                  onChange={(e) => setLeaderViews(e.target.value)}
-                  className="w-full h-20 bg-bg/50 border border-white/10 rounded-[2rem] px-8 outline-none focus:border-amber-500 transition-all font-black text-3xl tracking-tighter text-white"
-                  placeholder="0"
-                />
+            {/* Dados do Adversário */}
+            <div className="space-y-6">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-amber-500/60 ml-4">Alvo para Ultrapassar</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição Alvo (#)</label>
+                  <input 
+                    type="number"
+                    value={leaderRank}
+                    onChange={(e) => setLeaderRank(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
+                    placeholder="Ex: 1"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Views/Pontos do Adversário</label>
+                  <input 
+                    type="number"
+                    value={leaderViews}
+                    onChange={(e) => setLeaderViews(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -183,21 +226,26 @@ export default function Ranking() {
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
           >
             {/* Gap de Ultrapassagem */}
-            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10 flex flex-col justify-between">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-6">Diferença para o Top 1</div>
-                <div className="text-6xl font-black text-white tracking-tighter">
-                  {results.diff > 0 ? results.diff.toLocaleString() : 'LÍDER!'}
+            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10 flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
+                <Trophy size={80} />
+              </div>
+              <div className="relative z-10">
+                <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-6">Salto de Ranking</div>
+                <div className="flex items-center gap-4 text-5xl font-black text-white tracking-tighter mb-4">
+                  <span>{myRank || '?'}º</span>
+                  <ChevronRight className="text-red-500" />
+                  <span className="text-amber-500">{leaderRank || '?'}º</span>
                 </div>
-                <div className="text-[11px] font-black text-text-dim uppercase mt-4">
-                  {results.diff > 0 ? `Faltam ${(results.leaderViews - results.myViews)} views` : 'Você está na frente!'}
+                <div className="text-xl font-black text-text-dim uppercase tracking-tighter">
+                  Gap: {results.diff > 0 ? results.diff.toLocaleString() : 'Superado!'}
                 </div>
               </div>
               <div className="h-2 w-full bg-white/5 rounded-full mt-10 overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${results.progress}%` }}
-                  className="h-full bg-red-500 shadow-glow" 
+                  className="h-full bg-gradient-to-r from-red-500 to-amber-500 shadow-glow" 
                 />
               </div>
             </div>
