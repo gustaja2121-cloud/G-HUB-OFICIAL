@@ -221,77 +221,85 @@ export default function Ranking() {
         </section>
       </div>
 
-      {/* Resultados e Análise */}
-      <AnimatePresence>
-        {showResult && (
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-8"
-          >
-            {/* Meta de Ultrapassagem - INTEGRADA */}
-            <div className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-12 flex flex-col justify-center relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
-                <Trophy size={100} className="text-blue-500" />
-              </div>
-              <div className="relative z-10 space-y-10">
-                <div>
-                  <div className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 italic">Protocolo de Ultrapassagem</div>
-                  <div className="flex items-center gap-6 text-6xl font-black text-white tracking-tighter mb-4">
-                    <span>{myRank || '?'}º</span>
-                    <ChevronRight className="text-blue-500" />
-                    <span className="text-amber-500">{leaderRank || '?'}º</span>
+      {/* Seção de Resultados e Timer Permanente */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Meta de Ultrapassagem - Aparece após cálculo */}
+        <div className="relative min-h-[500px]">
+          <AnimatePresence>
+            {showResult ? (
+              <motion.div 
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-12 h-full flex flex-col justify-center relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
+                  <Trophy size={100} className="text-blue-500" />
+                </div>
+                <div className="relative z-10 space-y-10">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 italic">Protocolo de Ultrapassagem</div>
+                    <div className="flex items-center gap-6 text-6xl font-black text-white tracking-tighter mb-4">
+                      <span>{myRank || '?'}º</span>
+                      <ChevronRight className="text-blue-500" />
+                      <span className="text-amber-500">{leaderRank || '?'}º</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-8 pt-8 border-t border-white/5">
+                    <div>
+                      <div className="text-5xl font-black text-white tracking-tighter">
+                         {results.totalToOvertake.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] mt-2">Views totais para passar (C/ Projeção)</div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-4xl font-black text-amber-500 tracking-tighter">
+                        {results.dailyNeeded.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] font-black text-amber-500/60 uppercase tracking-[0.3em] mt-2">Sua Meta Diária de Segurança</div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 gap-8 pt-8 border-t border-white/5">
-                  <div>
-                    <div className="text-5xl font-black text-white tracking-tighter">
-                       {results.totalToOvertake.toLocaleString()}
-                    </div>
-                    <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] mt-2">Views totais para passar (C/ Projeção)</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-4xl font-black text-amber-500 tracking-tighter">
-                      {results.dailyNeeded.toLocaleString()}
-                    </div>
-                    <div className="text-[10px] font-black text-amber-500/60 uppercase tracking-[0.3em] mt-2">Sua Meta Diária de Segurança</div>
-                  </div>
-                </div>
+              </motion.div>
+            ) : (
+              <div className="premium-card bg-surface/20 border-dashed border-white/5 h-full flex flex-col items-center justify-center text-center p-12 opacity-40">
+                <Sword size={48} className="text-text-dim mb-4 opacity-20" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">Aguardando Simulação de Combate...</p>
               </div>
-            </div>
+            )}
+          </AnimatePresence>
+        </div>
 
-            {/* Timer de Guerra Detalhado - NOVO LUGAR */}
-            <div className="premium-card bg-gradient-to-br from-surface to-red-900/20 border-red-500/20 p-12 flex flex-col items-center justify-center text-center relative overflow-hidden">
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-500/10 via-transparent to-transparent animate-pulse" />
-               
-               <Timer size={64} className="text-red-500 mb-8" />
-               <div className="text-[12px] font-black uppercase tracking-[0.6em] text-red-500 mb-10">Tempo para o Reset do Ranking</div>
-               
-               <div className="grid grid-cols-4 gap-6 w-full max-w-md">
-                 {[
-                   { label: 'Dias', val: Math.floor((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) },
-                   { label: 'Horas', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60)) % 24) },
-                   { label: 'Min', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60)) % 60) },
-                   { label: 'Seg', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / 1000) % 60) }
-                 ].map((unit, i) => (
-                   <div key={i} className="flex flex-col items-center">
-                     <div className="text-4xl md:text-5xl font-black text-white tracking-tighter tabular-nums bg-white/5 w-full py-6 rounded-3xl border border-white/5 shadow-inner">
-                       {String(unit.val).padStart(2, '0')}
-                     </div>
-                     <div className="text-[9px] font-black text-text-dim uppercase tracking-widest mt-4 opacity-40">{unit.label}</div>
-                   </div>
-                 ))}
+        {/* Timer de Guerra Detalhado - SEMPRE VISÍVEL */}
+        <div className="premium-card bg-gradient-to-br from-surface to-red-900/20 border-red-500/20 p-12 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[500px]">
+           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-500/10 via-transparent to-transparent animate-pulse" />
+           
+           <Timer size={64} className="text-red-500 mb-8" />
+           <div className="text-[12px] font-black uppercase tracking-[0.6em] text-red-500 mb-10">Tempo para o Reset do Ranking</div>
+           
+           <div className="grid grid-cols-4 gap-6 w-full max-w-md">
+             {[
+               { label: 'Dias', val: Math.floor((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) },
+               { label: 'Horas', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60)) % 24) },
+               { label: 'Min', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60)) % 60) },
+               { label: 'Seg', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / 1000) % 60) }
+             ].map((unit, i) => (
+               <div key={i} className="flex flex-col items-center">
+                 <div className="text-4xl md:text-5xl font-black text-white tracking-tighter tabular-nums bg-white/5 w-full py-6 rounded-3xl border border-white/5 shadow-inner">
+                   {String(unit.val).padStart(2, '0')}
+                 </div>
+                 <div className="text-[9px] font-black text-text-dim uppercase tracking-widest mt-4 opacity-40">{unit.label}</div>
                </div>
+             ))}
+           </div>
 
-               <p className="mt-12 text-[11px] font-bold text-text-dim italic opacity-60 leading-relaxed max-w-xs">
-                 O ranking mensal da empresa atualiza todo domingo à meia-noite. Mantenha o ritmo!
-               </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+           <p className="mt-12 text-[11px] font-bold text-text-dim italic opacity-60 leading-relaxed max-w-xs">
+             O ranking mensal da empresa atualiza todo domingo à meia-noite. Mantenha o ritmo!
+           </p>
+        </div>
+      </div>
     </div>
   );
 }
