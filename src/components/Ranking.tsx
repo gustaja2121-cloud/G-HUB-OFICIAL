@@ -242,7 +242,7 @@ export default function Ranking() {
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
           >
             {/* Gap de Ultrapassagem - PARTE AZUL */}
-            <div className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-10 flex flex-col justify-between relative overflow-hidden">
+            <div className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-10 flex flex-col justify-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
                 <Trophy size={80} className="text-blue-500" />
               </div>
@@ -253,67 +253,53 @@ export default function Ranking() {
                   <ChevronRight className="text-blue-500" />
                   <span className="text-amber-500">{leaderRank || '?'}º</span>
                 </div>
-                <div className="text-3xl font-black text-white tracking-tighter">
+                <div className="text-4xl font-black text-white tracking-tighter">
                    GAP: {results.diff > 0 ? results.diff.toLocaleString() : 'Superado!'}
                 </div>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full mt-10 overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${results.progress}%` }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-amber-500 shadow-glow" 
-                />
               </div>
             </div>
 
             {/* Plano de Ação Diário - PARTE VERMELHA */}
-            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10">
-              <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-6">Projeção de Reação e Esforço</div>
-              <div className="space-y-6">
+            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10 flex flex-col justify-center">
+              <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-8">Meta Diária de Vitória</div>
+              <div className="space-y-10">
                 <div>
-                  <div className="text-4xl font-black text-amber-500 tracking-tighter">+{results.projectedLeaderGrowth.toLocaleString()}</div>
-                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Oponente deve aumentar até domingo</div>
+                  <div className="text-6xl font-black text-white tracking-tighter">
+                    {(results.dailyNeeded + results.safetyBuffer).toLocaleString()}
+                  </div>
+                  <div className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mt-2">Views p/ dia (Com Margem)</div>
                 </div>
                 <div className="pt-6 border-t border-white/5">
-                  <div className="text-5xl font-black text-white tracking-tighter">{results.dailyNeeded.toLocaleString()}</div>
-                  <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">Views p/ dia (Esforço de Guerra)</div>
-                </div>
-                <div className="pt-4">
-                  <div className="text-2xl font-black text-green-500 tracking-tighter">{results.safetyBuffer.toLocaleString()}</div>
-                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Extra p/ garantir (Margem de Segurança)</div>
+                  <div className="text-2xl font-black text-amber-500 tracking-tighter">+{results.projectedLeaderGrowth.toLocaleString()}</div>
+                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Reação esperada do oponente</div>
                 </div>
               </div>
             </div>
 
-            {/* Conselhos do Nexus */}
-            <div className="premium-card bg-surface/40 p-10 flex flex-col justify-center gap-6">
+            {/* Checklist de Batalha - SUBSTITUINDO ESTRATÉGIA */}
+            <div className="premium-card bg-surface/40 p-10 flex flex-col gap-6">
               <div className="flex items-center gap-3 text-red-500">
-                <Zap size={20} />
-                <h4 className="text-sm font-black uppercase tracking-widest">Estratégia de Guerra</h4>
+                <Target size={20} />
+                <h4 className="text-sm font-black uppercase tracking-widest">Checklist de Batalha</h4>
               </div>
-              <div className="space-y-4">
-                {results.diff > 10000 ? (
-                  <div className="flex gap-4 p-4 bg-red-500/5 rounded-2xl border border-red-500/10">
-                    <AlertTriangle className="text-red-500 shrink-0" size={20} />
-                    <p className="text-[11px] font-bold text-text-dim leading-relaxed italic">"O gap é grande. Foco total em volume. Dobre o número de postagens para assustar o líder."</p>
+              <div className="space-y-3">
+                {[
+                  "Postar volume de vídeos planejado",
+                  "Revisar 'Hooks' dos vídeos",
+                  "Monitorar views do adversário",
+                  "Bater meta de views do G-HUB"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-red-500/30 transition-all cursor-pointer">
+                    <div className="w-5 h-5 rounded-md border-2 border-white/20 flex items-center justify-center group-hover:border-red-500 transition-colors">
+                      <div className="w-2 h-2 bg-red-500 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">{item}</span>
                   </div>
-                ) : results.diff > 0 ? (
-                  <div className="flex gap-4 p-4 bg-amber-500/5 rounded-2xl border border-amber-500/10">
-                    <TrendingUp className="text-amber-500 shrink-0" size={20} />
-                    <p className="text-[11px] font-bold text-text-dim leading-relaxed italic">"Você está na cola! Um post viral agora te coloca no Top 1. Melhore o Hook dos próximos vídeos."</p>
-                  </div>
-                ) : (
-                  <div className="flex gap-4 p-4 bg-green-500/5 rounded-2xl border border-green-500/10">
-                    <CheckCircle2 className="text-green-500 shrink-0" size={20} />
-                    <p className="text-[11px] font-bold text-text-dim leading-relaxed italic">"Status: LÍDER. Mantenha o ritmo de manutenção e monitore se o cara de baixo está acelerando."</p>
-                  </div>
-                )}
-                
-                <div className="flex gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <Target className="text-white shrink-0" size={20} />
-                  <p className="text-[11px] font-bold text-text-dim leading-relaxed italic">"Faltam {results.daysRemaining} dias de guerra. Domingo à meia-noite o trono é seu."</p>
-                </div>
+                ))}
               </div>
+              <p className="text-[10px] font-black text-red-500/60 uppercase tracking-[0.2em] mt-2 text-center">
+                Faltam {results.daysRemaining} dias de guerra
+              </p>
             </div>
           </motion.div>
         )}
