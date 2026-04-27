@@ -17,7 +17,8 @@ import {
   Loader2,
   Scissors,
   Lock,
-  Calculator
+  Calculator,
+  Trophy
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Notes from './components/Notes';
@@ -26,6 +27,7 @@ import Finance from './components/Finance';
 import Cortes from './components/Cortes';
 import Accounts from './components/Accounts';
 import ROI from './components/ROI';
+import Ranking from './components/Ranking';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
 import { useAuth } from './lib/AuthContext';
@@ -57,6 +59,7 @@ export default function App() {
     { id: 'cortes', label: 'Cortes', icon: <Scissors size={20} /> },
     { id: 'finance', label: 'Financeiro', icon: <DollarSign size={20} /> },
     { id: 'roi', label: 'ROI', icon: <Calculator size={20} /> },
+    { id: 'ranking', label: 'Arena', icon: <Trophy size={20} /> },
     { id: 'accounts', label: 'Contas', icon: <Lock size={20} /> },
     { id: 'notes', label: 'Notas', icon: <StickyNote size={20} /> },
   ] as const;
@@ -70,6 +73,7 @@ export default function App() {
       case 'cortes': return <Cortes {...commonProps} />;
       case 'accounts': return <Accounts {...commonProps} />;
       case 'roi': return <ROI {...commonProps} />;
+      case 'ranking': return <Ranking {...commonProps} />;
       default: return <Dashboard {...commonProps} />;
     }
   };
