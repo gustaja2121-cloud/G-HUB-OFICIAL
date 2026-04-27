@@ -97,33 +97,60 @@ export default function ROI() {
 
   const monthRevenuePerPost = monthPosts > 0 ? monthFinance / monthPosts : 0;
 
-  // Simulation
-  const numericTarget = parseFloat(targetRevenue) || 0;
-  const numericCosts = parseFloat(costs) || 0;
-  const postsNeeded = monthRevenuePerPost > 0 
-    ? Math.ceil((numericTarget + numericCosts) / monthRevenuePerPost) 
-    : 0;
+  // New Automatic Calculations
+  const currentDay = new Date().getDate();
+  const daysInMonth = 30; // Approximation
+  
+  const avgPostsPerDay = monthPosts / currentDay;
+  const projectedPosts = avgPostsPerDay * daysInMonth;
+  const projectedRevenue = monthRevenuePerPost * projectedPosts;
+  
+  const automaticTarget = Math.ceil(projectedRevenue * 1.2 / 500) * 500; // 20% upgrade rounded to nearest 500
 
-  // Chart Data: Last 14 days ROI
-  const chartData = useMemo(() => {
+  // Chart 1: Pulso de Faturamento (Daily + Cumulative)
+  const cumulativeData = useMemo(() => {
+    let acc = 0;
     return Array.from({ length: 14 }).map((_, i) => {
       const date = subDays(new Date(), 13 - i);
-      const dayStr = format(date, 'yyyy-MM-dd');
-      
       const dayFinance = finance
         .filter(f => isSameDay(new Date(f.date), date))
         .reduce((acc, curr) => acc + curr.amount, 0);
-        
-      const dayPosts = videoHistory.find(v => v.data === dayStr)?.quantidade || 0;
-      const dayROI = dayPosts > 0 ? dayFinance / dayPosts : 0;
-
+      acc += dayFinance;
       return {
         name: format(date, 'dd/MM'),
-        roi: dayROI,
-        faturamento: dayFinance,
-        postagens: dayPosts
+        diario: dayFinance,
+        acumulado: acc
       };
     });
+  }, [finance]);
+
+  // Chart 2: Volume de Escala (This Week vs Previous Week)
+  const weeklyData = useMemo(() => {
+    const getWeekStats = (offset: number) => {
+      const start = subDays(new Date(), (offset + 1) * 7);
+      const end = subDays(new Date(), offset * 7);
+      const rev = finance
+        .filter(f => {
+          const d = new Date(f.date);
+          return d >= start && d <= end;
+        })
+        .reduce((acc, curr) => acc + curr.amount, 0);
+      const posts = videoHistory
+        .filter(v => {
+          const d = new Date(v.data);
+          return d >= start && d <= end;
+        })
+        .reduce((acc, curr) => acc + curr.quantidade, 0);
+      return { revenue: rev, posts };
+    };
+
+    const currentWeek = getWeekStats(0);
+    const lastWeek = getWeekStats(1);
+
+    return [
+      { name: 'S. Passada', revenue: lastWeek.revenue, posts: lastWeek.posts },
+      { name: 'S. Atual', revenue: currentWeek.revenue, posts: currentWeek.posts },
+    ];
   }, [finance, videoHistory]);
 
   const containerVariants = {
@@ -213,17 +240,13 @@ export default function ROI() {
             <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center text-green-500">
               <Target size={24} />
             </div>
-            <div className="px-3 py-1 bg-green-500/20 rounded-full text-green-400 text-[9px] font-black uppercase tracking-widest">Meta</div>
+            <div className="px-3 py-1 bg-green-500/20 rounded-full text-green-400 text-[9px] font-black uppercase tracking-widest">Meta Automática</div>
           </div>
           <div className="space-y-1">
-            <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-40">Faturamento Mensal</div>
-            <div className="text-5xl font-black text-white tracking-tighter">R$ {monthFinance.toFixed(2)}</div>
-            <div className="h-2 w-full bg-white/5 rounded-full mt-6 overflow-hidden">
-               <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min((monthFinance / (numericTarget || 1)) * 100, 100)}%` }}
-                className="h-full bg-green-500 shadow-glow" 
-               />
+            <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-40">Projeção Final do Mês</div>
+            <div className="text-5xl font-black text-white tracking-tighter">R$ {projectedRevenue.toFixed(0)}</div>
+            <div className="flex items-center gap-2 text-[10px] font-black text-green-500 uppercase tracking-widest mt-4">
+               Próximo Nível Sugerido: R$ {automaticTarget}
             </div>
           </div>
         </motion.div>
@@ -233,133 +256,157 @@ export default function ROI() {
             <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500">
               <Zap size={24} />
             </div>
-            <div className="px-3 py-1 bg-red-500/20 rounded-full text-red-400 text-[9px] font-black uppercase tracking-widest">Esforço</div>
+            <div className="px-3 py-1 bg-red-500/20 rounded-full text-red-400 text-[9px] font-black uppercase tracking-widest">Ritmo</div>
           </div>
           <div className="space-y-1">
-            <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-40">Vídeos Postados (Mês)</div>
-            <div className="text-5xl font-black text-white tracking-tighter">{monthPosts} <span className="text-lg opacity-30">UN</span></div>
-            <p className="text-[11px] font-bold text-text-dim italic mt-4 opacity-60">Ritmo atual: {(monthPosts / (new Date().getDate())).toFixed(1)} vídeos/dia</p>
+            <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-40">Média de Produção</div>
+            <div className="text-5xl font-black text-white tracking-tighter">{avgPostsPerDay.toFixed(1)} <span className="text-lg opacity-30">V/DIA</span></div>
+            <p className="text-[11px] font-bold text-text-dim italic mt-4 opacity-60">Foco atual: {monthPosts} vídeos este mês</p>
           </div>
         </motion.div>
       </motion.div>
 
-      {/* Simulator Section */}
+      {/* 3 Performance Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Chart 1: Pulso de Faturamento (Composto) */}
+        <motion.div variants={itemVariants} className="premium-card flex flex-col gap-8 lg:col-span-2 min-h-[450px]">
+          <div className="flex items-center justify-between">
+             <div>
+                <h3 className="text-2xl font-black uppercase tracking-tighter gradient-text">1. Pulso de Faturamento Acumulado</h3>
+                <p className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60">Ganho Diário vs Crescimento Mensal (14 dias)</p>
+             </div>
+             <div className="flex gap-4">
+                <div className="flex items-center gap-2">
+                   <div className="w-3 h-3 bg-white/10 rounded-sm" />
+                   <span className="text-[9px] font-black text-text-dim uppercase">Diário</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <div className="w-3 h-3 bg-amber-500 rounded-sm" />
+                   <span className="text-[9px] font-black text-text-dim uppercase">Acumulado</span>
+                </div>
+             </div>
+          </div>
+          <div className="flex-1 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={cumulativeData}>
+                <CartesianGrid strokeDasharray="5 5" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                <XAxis dataKey="name" stroke="#4a4a4a" fontSize={10} fontWeight={900} tickLine={false} axisLine={false} dy={10} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <Bar dataKey="diario" fill="rgba(255,255,255,0.05)" radius={[5, 5, 0, 0]} />
+                <Line type="monotone" dataKey="acumulado" stroke="#f59e0b" strokeWidth={4} dot={{ r: 4, fill: '#f59e0b' }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        {/* Chart 2: Eficiência por Postagem */}
+        <motion.div variants={itemVariants} className="premium-card flex flex-col gap-8 h-[400px]">
+          <div className="flex items-center justify-between">
+             <div>
+                <h3 className="text-2xl font-black uppercase tracking-tighter gradient-text">2. Evolução da Eficiência</h3>
+                <p className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60">Quanto vale seu tempo por vídeo</p>
+             </div>
+             <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500"><TrendingUp size={20} /></div>
+          </div>
+          <div className="flex-1 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="effGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="5 5" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                <XAxis dataKey="name" stroke="#4a4a4a" fontSize={10} fontWeight={900} tickLine={false} axisLine={false} />
+                <Tooltip 
+                   contentStyle={{ backgroundColor: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem' }}
+                />
+                <Area type="stepAfter" dataKey="roi" stroke="#f59e0b" fill="url(#effGrad)" strokeWidth={3} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        {/* Chart 3: Volume de Escala (Semanas) */}
+        <motion.div variants={itemVariants} className="premium-card flex flex-col gap-8 h-[400px]">
+          <div className="flex items-center justify-between">
+             <div>
+                <h3 className="text-2xl font-black uppercase tracking-tighter gradient-text">3. Comparativo de Escala</h3>
+                <p className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60">Esta Semana vs Semana Passada</p>
+             </div>
+             <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500"><BarChart3 size={20} /></div>
+          </div>
+          <div className="flex-1 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="5 5" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                <XAxis dataKey="name" stroke="#4a4a4a" fontSize={10} fontWeight={900} tickLine={false} axisLine={false} />
+                <Tooltip 
+                   contentStyle={{ backgroundColor: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem' }}
+                />
+                <Bar dataKey="revenue" fill="#f59e0b" radius={[10, 10, 0, 0]} barSize={60} />
+                <Bar dataKey="posts" fill="rgba(255,255,255,0.1)" radius={[10, 10, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+      </div>
+
+      {/* Simulator Section (Manual Override) */}
       <section className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-2 premium-card flex flex-col gap-10 bg-surface/60"
+          className="lg:col-span-5 premium-card flex flex-col md:flex-row gap-12 bg-surface/60 border-amber-500/20"
         >
-          <div>
-            <h3 className="text-3xl font-black uppercase tracking-tighter mb-2 gradient-text">Simulador de Metas</h3>
-            <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60 italic">Planejamento de Expansão de Lucro</p>
-          </div>
-          
-          <div className="space-y-8">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim ml-4 opacity-60">Meta de Faturamento (R$)</label>
-              <div className="relative group">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-amber-500"><DollarSign size={20} /></div>
-                <input 
-                  type="number"
-                  value={targetRevenue}
-                  onChange={(e) => setTargetRevenue(e.target.value)}
-                  className="w-full h-16 bg-bg/50 border border-white/5 rounded-3xl pl-16 pr-8 outline-none focus:border-amber-500 transition-all font-black text-lg tracking-tighter"
-                  placeholder="Ex: 10000"
-                />
+          <div className="flex-1 space-y-6">
+            <h3 className="text-3xl font-black uppercase tracking-tighter mb-2 gradient-text">Simulador de Metas (Manual)</h3>
+            <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60 italic">Ajuste seu custo operacional para ver o lucro líquido real</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim ml-4 opacity-60">Meta Customizada (R$)</label>
+                <div className="relative group">
+                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-amber-500"><DollarSign size={20} /></div>
+                  <input 
+                    type="number"
+                    value={targetRevenue}
+                    onChange={(e) => setTargetRevenue(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-3xl pl-16 pr-8 outline-none focus:border-amber-500 transition-all font-black text-lg tracking-tighter"
+                    placeholder="Ex: 5000"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim ml-4 opacity-60">Custos Fixos (R$)</label>
+                <div className="relative group">
+                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-red-400"><PieChart size={20} /></div>
+                  <input 
+                    type="number"
+                    value={costs}
+                    onChange={(e) => setCosts(e.target.value)}
+                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-3xl pl-16 pr-8 outline-none focus:border-red-500 transition-all font-black text-lg tracking-tighter"
+                    placeholder="Ex: 200"
+                  />
+                </div>
               </div>
             </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim ml-4 opacity-60">Custos Operacionais (R$)</label>
-              <div className="relative group">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-red-400"><PieChart size={20} /></div>
-                <input 
-                  type="number"
-                  value={costs}
-                  onChange={(e) => setCosts(e.target.value)}
-                  className="w-full h-16 bg-bg/50 border border-white/5 rounded-3xl pl-16 pr-8 outline-none focus:border-red-500 transition-all font-black text-lg tracking-tighter"
-                  placeholder="Ex: 200"
-                />
-              </div>
-            </div>
-
-            <div className="p-8 bg-amber-500/5 border border-amber-500/20 rounded-[2.5rem] relative overflow-hidden group hover:bg-amber-500/10 transition-all">
-               <div className="relative z-10">
-                 <div className="text-[10px] font-black text-amber-500 uppercase tracking-[0.5em] mb-4">Plano de Execução</div>
-                 <div className="flex items-end gap-3">
-                    <div className="text-5xl font-black text-white">{postsNeeded}</div>
-                    <div className="text-[10px] font-black uppercase text-text-dim tracking-widest mb-2 opacity-60">Vídeos p/ Mês</div>
-                 </div>
-                 <p className="text-xs font-bold text-text-dim mt-6 leading-relaxed opacity-80">
-                   Para atingir R$ {numericTarget.toLocaleString()} líquidos, você precisa manter o ritmo e postar cerca de **{Math.ceil(postsNeeded / 30)} vídeos por dia**.
-                 </p>
-               </div>
-               <div className="absolute -right-6 -bottom-6 text-amber-500/10 group-hover:scale-110 transition-transform">
-                 <Target size={120} />
-               </div>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-3 premium-card flex flex-col gap-10"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-3xl font-black uppercase tracking-tighter mb-2 gradient-text">Tendência de Lucratividade</h3>
-              <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60 italic">Valor gerado por vídeo nos últimos 14 dias</p>
-            </div>
-            <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-text-dim"><BarChart3 size={24} /></div>
           </div>
 
-          <div className="h-[380px] w-full mt-auto">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData}>
-                <defs>
-                  <linearGradient id="roiGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="10 10" stroke="rgba(255,255,255,0.02)" vertical={false} />
-                <XAxis dataKey="name" stroke="#4a4a4a" fontSize={11} fontWeight={900} tickLine={false} axisLine={false} dy={15} />
-                <YAxis stroke="#404040" fontSize={10} tickLine={false} axisLine={false} dx={-10} hide />
-                <Tooltip 
-                  cursor={{ stroke: 'rgba(255,191,0,0.1)', strokeWidth: 40 }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-surface/95 backdrop-blur-3xl border border-white/10 p-6 rounded-3xl shadow-premium min-w-[240px]">
-                          <p className="text-[10px] font-black text-text-dim uppercase tracking-widest mb-4 border-b border-white/5 pb-2">{label}</p>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black uppercase text-text-dim">Média p/ Vídeo</span>
-                              <span className="text-xl font-black text-amber-500">R$ {payload[0].value.toFixed(2)}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs font-bold text-white/40">
-                               <span>Faturamento</span>
-                               <span>R$ {payload[1].value.toFixed(2)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="roi" 
-                  fill="url(#roiGrad)" 
-                  stroke="#f59e0b" 
-                  strokeWidth={4}
-                />
-                <Bar dataKey="faturamento" fill="rgba(255,255,255,0.03)" radius={[10, 10, 0, 0]} />
-              </ComposedChart>
-            </ResponsiveContainer>
+          <div className="md:w-1/3 p-10 bg-amber-500 text-black rounded-[3rem] shadow-premium flex flex-col justify-center gap-4">
+             <div className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60">Esforço Necessário</div>
+             <div className="text-6xl font-black tracking-tighter">{postsNeeded}</div>
+             <div className="text-[11px] font-black uppercase tracking-widest">Vídeos para bater a meta</div>
+             <div className="mt-4 pt-4 border-t border-black/10 text-xs font-bold leading-tight opacity-80 italic">
+                No seu ritmo atual de {avgPostsPerDay.toFixed(1)} vídeos por dia, você chegaria em {(monthPosts + (postsNeeded - monthPosts)).toFixed(0)} vídeos.
+             </div>
           </div>
         </motion.div>
       </section>
