@@ -126,8 +126,8 @@ export default function Ranking() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* Calculadora de Ultrapassagem */}
-        <section className="lg:col-span-3 premium-card bg-surface/60 border-red-500/20 relative overflow-hidden h-fit">
+        {/* Calculadora de Ultrapassagem - EXPANDIDA */}
+        <section className="lg:col-span-5 premium-card bg-surface/60 border-red-500/20 relative overflow-hidden h-fit">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
           
           <div className="flex items-center gap-4 mb-10">
@@ -136,68 +136,70 @@ export default function Ranking() {
           </div>
 
           <div className="space-y-12">
-            {/* Seus Dados */}
-            <div className="space-y-6">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500/60 ml-4">Sua Posição Atual</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição (#)</label>
-                  <input 
-                    type="number"
-                    value={myRank}
-                    onChange={(e) => setMyRank(e.target.value)}
-                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-red-500 transition-all font-black text-xl tracking-tighter text-white"
-                    placeholder="Ex: 5"
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Suas Views/Pontos Totais</label>
-                  <input 
-                    type="number"
-                    value={myViews}
-                    onChange={(e) => setMyViews(e.target.value)}
-                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-red-500 transition-all font-black text-xl tracking-tighter text-white"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+               {/* Seus Dados */}
+               <div className="space-y-6">
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500/60 ml-4">Sua Posição Atual</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="md:col-span-1 space-y-2">
+                     <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição (#)</label>
+                     <input 
+                       type="number"
+                       value={myRank}
+                       onChange={(e) => setMyRank(e.target.value)}
+                       className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-red-500 transition-all font-black text-xl tracking-tighter text-white"
+                       placeholder="Ex: 5"
+                     />
+                   </div>
+                   <div className="md:col-span-2 space-y-2">
+                     <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Suas Views/Pontos Totais</label>
+                     <input 
+                       type="number"
+                       value={myViews}
+                       onChange={(e) => setMyViews(e.target.value)}
+                       className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-red-500 transition-all font-black text-xl tracking-tighter text-white"
+                       placeholder="0"
+                     />
+                   </div>
+                 </div>
+               </div>
 
-            {/* Dados do Adversário */}
-            <div className="space-y-6">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-amber-500/60 ml-4">Alvo para Ultrapassar</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="md:col-span-1 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição (#)</label>
-                  <input 
-                    type="number"
-                    value={leaderRank}
-                    onChange={(e) => setLeaderRank(e.target.value)}
-                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
-                    placeholder="Ex: 1"
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Views do Adversário</label>
-                  <input 
-                    type="number"
-                    value={leaderViews}
-                    onChange={(e) => setLeaderViews(e.target.value)}
-                    className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="md:col-span-1 space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Ganho Diário Est.</label>
-                  <input 
-                    type="number"
-                    value={leaderGrowth}
-                    onChange={(e) => setLeaderGrowth(e.target.value)}
-                    className="w-full h-16 bg-bg/50 border border-amber-500/20 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
-                    placeholder="+10k"
-                  />
-                </div>
-              </div>
+               {/* Dados do Adversário */}
+               <div className="space-y-6">
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-amber-500/60 ml-4">Alvo para Ultrapassar</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                   <div className="md:col-span-1 space-y-2">
+                     <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Posição (#)</label>
+                     <input 
+                       type="number"
+                       value={leaderRank}
+                       onChange={(e) => setLeaderRank(e.target.value)}
+                       className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
+                       placeholder="Ex: 1"
+                     />
+                   </div>
+                   <div className="md:col-span-2 space-y-2">
+                     <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Views do Adversário</label>
+                     <input 
+                       type="number"
+                       value={leaderViews}
+                       onChange={(e) => setLeaderViews(e.target.value)}
+                       className="w-full h-16 bg-bg/50 border border-white/5 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
+                       placeholder="0"
+                     />
+                   </div>
+                   <div className="md:col-span-1 space-y-2">
+                     <label className="text-[9px] font-black uppercase tracking-widest text-text-dim opacity-40 ml-4">Ganho Diário Est.</label>
+                     <input 
+                       type="number"
+                       value={leaderGrowth}
+                       onChange={(e) => setLeaderGrowth(e.target.value)}
+                       className="w-full h-16 bg-bg/50 border border-amber-500/20 rounded-2xl px-6 outline-none focus:border-amber-500 transition-all font-black text-xl tracking-tighter text-white"
+                       placeholder="+10k"
+                     />
+                   </div>
+                 </div>
+               </div>
             </div>
           </div>
 
@@ -217,20 +219,6 @@ export default function Ranking() {
             )}
           </button>
         </section>
-
-        {/* Countdown Visual */}
-        <section className="lg:col-span-2 premium-card flex flex-col justify-center items-center gap-6 bg-red-950/10 border-red-500/10 text-center relative overflow-hidden">
-           <div className="absolute inset-0 opacity-5 pointer-events-none">
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-500 via-transparent to-transparent animate-pulse" />
-           </div>
-           
-           <Timer size={60} className="text-red-500 mb-2" />
-           <div className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500">Tempo para o Reset (Domingo)</div>
-           <div className="text-7xl font-black tracking-tighter text-white tabular-nums">
-             {timeLeft.getDate() - new Date().getDate()}D {timeLeft.getHours() - new Date().getHours()}H
-           </div>
-           <p className="text-[11px] font-bold text-text-dim italic opacity-60">O ranking mensal atualiza domingo à meia-noite!</p>
-        </section>
       </div>
 
       {/* Resultados e Análise */}
@@ -239,67 +227,67 @@ export default function Ranking() {
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 gap-8"
           >
-            {/* Gap de Ultrapassagem - PARTE AZUL */}
-            <div className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-10 flex flex-col justify-center relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
-                <Trophy size={80} className="text-blue-500" />
+            {/* Meta de Ultrapassagem - INTEGRADA */}
+            <div className="premium-card bg-gradient-to-br from-surface to-blue-900/10 border-blue-500/20 p-12 flex flex-col justify-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
+                <Trophy size={100} className="text-blue-500" />
               </div>
-              <div className="relative z-10">
-                <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-6">Visualizações Necessárias para Subir</div>
-                <div className="flex items-center gap-4 text-5xl font-black text-white tracking-tighter mb-4">
-                  <span>{myRank || '?'}º</span>
-                  <ChevronRight className="text-blue-500" />
-                  <span className="text-amber-500">{leaderRank || '?'}º</span>
-                </div>
-                <div className="text-4xl font-black text-white tracking-tighter">
-                   GAP: {results.diff > 0 ? results.diff.toLocaleString() : 'Superado!'}
-                </div>
-              </div>
-            </div>
-
-            {/* Plano de Ação Diário - PARTE VERMELHA */}
-            <div className="premium-card bg-gradient-to-br from-surface to-red-900/10 border-red-500/20 p-10 flex flex-col justify-center">
-              <div className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-8">Meta Diária de Vitória</div>
-              <div className="space-y-10">
+              <div className="relative z-10 space-y-10">
                 <div>
-                  <div className="text-6xl font-black text-white tracking-tighter">
-                    {(results.dailyNeeded + results.safetyBuffer).toLocaleString()}
+                  <div className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 italic">Protocolo de Ultrapassagem</div>
+                  <div className="flex items-center gap-6 text-6xl font-black text-white tracking-tighter mb-4">
+                    <span>{myRank || '?'}º</span>
+                    <ChevronRight className="text-blue-500" />
+                    <span className="text-amber-500">{leaderRank || '?'}º</span>
                   </div>
-                  <div className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mt-2">Views p/ dia (Com Margem)</div>
                 </div>
-                <div className="pt-6 border-t border-white/5">
-                  <div className="text-2xl font-black text-amber-500 tracking-tighter">+{results.projectedLeaderGrowth.toLocaleString()}</div>
-                  <div className="text-[10px] font-black text-text-dim uppercase tracking-widest">Reação esperada do oponente</div>
+
+                <div className="grid grid-cols-1 gap-8 pt-8 border-t border-white/5">
+                  <div>
+                    <div className="text-5xl font-black text-white tracking-tighter">
+                       {results.totalToOvertake.toLocaleString()}
+                    </div>
+                    <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] mt-2">Views totais para passar (C/ Projeção)</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-4xl font-black text-amber-500 tracking-tighter">
+                      {results.dailyNeeded.toLocaleString()}
+                    </div>
+                    <div className="text-[10px] font-black text-amber-500/60 uppercase tracking-[0.3em] mt-2">Sua Meta Diária de Segurança</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Checklist de Batalha - SUBSTITUINDO ESTRATÉGIA */}
-            <div className="premium-card bg-surface/40 p-10 flex flex-col gap-6">
-              <div className="flex items-center gap-3 text-red-500">
-                <Target size={20} />
-                <h4 className="text-sm font-black uppercase tracking-widest">Checklist de Batalha</h4>
-              </div>
-              <div className="space-y-3">
-                {[
-                  "Postar volume de vídeos planejado",
-                  "Revisar 'Hooks' dos vídeos",
-                  "Monitorar views do adversário",
-                  "Bater meta de views do G-HUB"
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-red-500/30 transition-all cursor-pointer">
-                    <div className="w-5 h-5 rounded-md border-2 border-white/20 flex items-center justify-center group-hover:border-red-500 transition-colors">
-                      <div className="w-2 h-2 bg-red-500 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">{item}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] font-black text-red-500/60 uppercase tracking-[0.2em] mt-2 text-center">
-                Faltam {results.daysRemaining} dias de guerra
-              </p>
+            {/* Timer de Guerra Detalhado - NOVO LUGAR */}
+            <div className="premium-card bg-gradient-to-br from-surface to-red-900/20 border-red-500/20 p-12 flex flex-col items-center justify-center text-center relative overflow-hidden">
+               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-500/10 via-transparent to-transparent animate-pulse" />
+               
+               <Timer size={64} className="text-red-500 mb-8" />
+               <div className="text-[12px] font-black uppercase tracking-[0.6em] text-red-500 mb-10">Tempo para o Reset do Ranking</div>
+               
+               <div className="grid grid-cols-4 gap-6 w-full max-w-md">
+                 {[
+                   { label: 'Dias', val: Math.floor((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) },
+                   { label: 'Horas', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60 * 60)) % 24) },
+                   { label: 'Min', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / (1000 * 60)) % 60) },
+                   { label: 'Seg', val: Math.floor(((timeLeft.getTime() - new Date().getTime()) / 1000) % 60) }
+                 ].map((unit, i) => (
+                   <div key={i} className="flex flex-col items-center">
+                     <div className="text-4xl md:text-5xl font-black text-white tracking-tighter tabular-nums bg-white/5 w-full py-6 rounded-3xl border border-white/5 shadow-inner">
+                       {String(unit.val).padStart(2, '0')}
+                     </div>
+                     <div className="text-[9px] font-black text-text-dim uppercase tracking-widest mt-4 opacity-40">{unit.label}</div>
+                   </div>
+                 ))}
+               </div>
+
+               <p className="mt-12 text-[11px] font-bold text-text-dim italic opacity-60 leading-relaxed max-w-xs">
+                 O ranking mensal da empresa atualiza todo domingo à meia-noite. Mantenha o ritmo!
+               </p>
             </div>
           </motion.div>
         )}
