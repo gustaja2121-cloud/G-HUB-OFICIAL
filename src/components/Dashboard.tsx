@@ -246,7 +246,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
               <TrendingUp size={32} />
             </div>
             <div>
-              <h1 className="text-4xl font-black tracking-tighter leading-none mb-2 gradient-text">SISTEMA ATUALIZADO</h1>
+              <h1 className="text-4xl font-black tracking-tighter leading-none mb-2 gradient-text">CENTRO OPERATIVO</h1>
               <div className="flex items-center gap-5">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />
