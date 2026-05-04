@@ -18,7 +18,6 @@ import {
   PerformanceState, 
   DailyChecklistTask, 
   FinanceEntry,
-  ClipLog,
   VideoPostRecord,
   Account
 } from '../types';
@@ -28,10 +27,8 @@ const COLLECTIONS = {
   PERFORMANCE: 'users',
   DAILY_CHECKLIST: 'dailyChecklist',
   FINANCE: 'finance',
-  CLIPS: 'clips',
   VIDEO_PERFORMANCE: 'videoPerformance',
   ACCOUNTS: 'accounts',
-  CLIP_LINKS: 'clipLinks',
 };
 
 const getUserId = () => {
@@ -227,30 +224,6 @@ export const storage = {
     }
   },
 
-  // Clips
-  getClips: async (): Promise<ClipLog[]> => {
-    try {
-      const q = query(collection(db, COLLECTIONS.CLIPS), where('userId', '==', getUserId()));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLog));
-    } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.CLIPS);
-    }
-  },
-  saveClip: async (clip: ClipLog) => {
-    try {
-      const userId = getUserId();
-      await setDoc(doc(db, COLLECTIONS.CLIPS, clip.id), { 
-        ...clip, 
-        userId,
-        updatedAt: serverTimestamp() 
-      });
-      await storage.addXP(5);
-    } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.CLIPS);
-    }
-  },
-  
   // Video Performance
   getVideoPerformance: async (): Promise<VideoPostRecord[]> => {
     try {
@@ -281,14 +254,6 @@ export const storage = {
       callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord)));
     });
   },
-  deleteClip: async (id: string) => {
-    try {
-      await deleteDoc(doc(db, COLLECTIONS.CLIPS, id));
-    } catch (e) {
-      handleFirestoreError(e, 'delete', COLLECTIONS.CLIPS);
-    }
-  },
-
   // Accounts
   getAccounts: async (): Promise<Account[]> => {
     try {
@@ -337,64 +302,5 @@ export const storage = {
     return onSnapshot(doc(db, COLLECTIONS.PERFORMANCE, userId), (snap) => {
       if (snap.exists()) callback(snap.data() as PerformanceState);
     });
-  },
-  subscribeClips: (callback: (clips: ClipLog[]) => void) => {
-    const q = query(collection(db, COLLECTIONS.CLIPS), where('userId', '==', getUserId()));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClipLog)));
-    });
-  },
-
-  // Clip Links (LocalStorage for stability)
-  getClipLinks: async (): Promise<ClipLink[]> => {
-    try {
-      const saved = localStorage.getItem('ghub_clip_links_v1');
-      if (saved) return JSON.parse(saved);
-      return [];
-    } catch (e) {
-      console.error('Error loading clip links:', e);
-      return [];
-    }
-  },
-  saveClipLink: async (link: ClipLink) => {
-    try {
-      const links = await storage.getClipLinks();
-      const index = links.findIndex(l => l.id === link.id);
-      let newLinks;
-      if (index >= 0) {
-        newLinks = [...links];
-        newLinks[index] = link;
-      } else {
-        newLinks = [link, ...links];
-      }
-      localStorage.setItem('ghub_clip_links_v1', JSON.stringify(newLinks));
-      await storage.addXP(15);
-      
-      // Trigger a storage event for local "subscription" feel if needed
-      window.dispatchEvent(new Event('storage_clip_links_updated'));
-    } catch (e) {
-      console.error('Error saving clip link:', e);
-    }
-  },
-  deleteClipLink: async (id: string) => {
-    try {
-      const links = await storage.getClipLinks();
-      const newLinks = links.filter(l => l.id !== id);
-      localStorage.setItem('ghub_clip_links_v1', JSON.stringify(newLinks));
-      window.dispatchEvent(new Event('storage_clip_links_updated'));
-    } catch (e) {
-      console.error('Error deleting clip link:', e);
-    }
-  },
-  subscribeClipLinks: (callback: (links: ClipLink[]) => void) => {
-    const handler = async () => {
-      const links = await storage.getClipLinks();
-      callback(links);
-    };
-    
-    window.addEventListener('storage_clip_links_updated', handler);
-    handler(); // Initial call
-    
-    return () => window.removeEventListener('storage_clip_links_updated', handler);
   },
 };

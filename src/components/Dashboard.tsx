@@ -246,7 +246,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
               <TrendingUp size={32} />
             </div>
             <div>
-              <h1 className="text-4xl font-black tracking-tighter leading-none mb-2 gradient-text">CENTRO OPERATIVO</h1>
+              <h1 className="text-4xl font-black tracking-tighter leading-none mb-2 gradient-text">SISTEMA ATUALIZADO</h1>
               <div className="flex items-center gap-5">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />
@@ -578,12 +578,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
                 <ChartBar size={24} />
                 <h3 className="text-3xl font-black uppercase tracking-tighter gradient-text">Correlação Estratégica</h3>
               </div>
-              <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60">Visão de ROI: Esforço de Postagem vs. Retorno Financeiro</p>
+              <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60">Visão de Desempenho: Esforço de Postagem vs. Retorno Financeiro</p>
             </div>
             <div className="flex gap-4">
               <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl">
                  <div className="w-2 h-2 bg-accent rounded-full" />
-                 <span className="text-[10px] font-black uppercase text-white tracking-widest">Esforço (Cortes)</span>
+                 <span className="text-[10px] font-black uppercase text-white tracking-widest">Esforço (Postagens)</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl">
                  <div className="w-2 h-2 bg-green-500 rounded-full" />

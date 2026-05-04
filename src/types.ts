@@ -37,12 +37,6 @@ export interface PerformanceState {
   lastResetDate?: string;
 }
 
-export interface ClipLog {
-  id: string;
-  data: string; // YYYY-MM-DD
-  quantidade: number;
-}
-
 export interface VideoPostRecord {
   id: string;
   data: string; // YYYY-MM-DD
@@ -61,11 +55,3 @@ export interface Account {
   updatedAt?: any;
 }
 
-export interface ClipLink {
-  id: string;
-  title: string;
-  rawUrl?: string;
-  editedUrl?: string;
-  status: 'ideia' | 'editando' | 'pronto' | 'postado';
-  createdAt: string;
-}

@@ -15,18 +15,14 @@ import {
   DollarSign,
   Lightbulb,
   Loader2,
-  Scissors,
   Lock,
-  Calculator,
   Trophy
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Notes from './components/Notes';
 import Login from './components/Login';
 import Finance from './components/Finance';
-import Cortes from './components/Cortes';
 import Accounts from './components/Accounts';
-import ROI from './components/ROI';
 import Ranking from './components/Ranking';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
@@ -35,7 +31,7 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useEffect } from 'react';
 
-type Tab = 'dashboard' | 'notes' | 'finance' | 'cortes' | 'accounts' | 'roi';
+type Tab = 'dashboard' | 'notes' | 'finance' | 'accounts' | 'ranking';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -56,9 +52,7 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: '📊 PAINEL', icon: <LayoutDashboard size={20} /> },
-    { id: 'cortes', label: '🎬 CORTES', icon: <Scissors size={20} /> },
     { id: 'finance', label: '🏦 FINANCEIRO', icon: <DollarSign size={20} /> },
-    { id: 'roi', label: '📈 ROI', icon: <Calculator size={20} /> },
     { id: 'ranking', label: '🏆 ARENA', icon: <Trophy size={20} /> },
     { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
     { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
@@ -70,9 +64,7 @@ export default function App() {
       case 'dashboard': return <Dashboard {...commonProps} />;
       case 'notes': return <Notes {...commonProps} />;
       case 'finance': return <Finance {...commonProps} />;
-      case 'cortes': return <Cortes {...commonProps} />;
       case 'accounts': return <Accounts {...commonProps} />;
-      case 'roi': return <ROI {...commonProps} />;
       case 'ranking': return <Ranking {...commonProps} />;
       default: return <Dashboard {...commonProps} />;
     }
