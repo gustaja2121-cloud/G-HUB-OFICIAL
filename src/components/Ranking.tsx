@@ -102,28 +102,37 @@ export default function Ranking() {
   }, [myViews, leaderViews, leaderGrowth, targetDate, now]);
 
   const handleCalculate = async () => {
-    if (!myViews || !leaderViews) return;
+    if (!myViews || !leaderViews) {
+      showToast('Preencha os campos obrigatórios', 'error');
+      return;
+    }
     
     setCalculating(true);
     setShowResult(false);
     
-    // Simulate thinking
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const simulation: any = {
-      myRank,
-      myViews,
-      leaderRank,
-      leaderViews,
-      leaderGrowth,
-      results
-    };
+    try {
+      // Simulate thinking for a premium feel
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const simulation: any = {
+        myRank,
+        myViews,
+        leaderRank,
+        leaderViews,
+        leaderGrowth,
+        results
+      };
 
-    await storage.saveRanking(simulation);
-    
-    setCalculating(false);
-    setShowResult(true);
-    showToast('Protocolo de Ataque Sincronizado', 'success');
+      await storage.saveRanking(simulation);
+      
+      setShowResult(true);
+      showToast('Protocolo de Ataque Sincronizado', 'success');
+    } catch (e) {
+      console.error('Erro na simulação:', e);
+      showToast('Falha ao sincronizar com a Arena', 'error');
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
