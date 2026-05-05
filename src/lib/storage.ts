@@ -29,6 +29,7 @@ const COLLECTIONS = {
   FINANCE: 'finance',
   VIDEO_PERFORMANCE: 'videoPerformance',
   ACCOUNTS: 'accounts',
+  RANKINGS: 'rankings',
 };
 
 const getUserId = () => {
@@ -213,11 +214,13 @@ export const storage = {
     try {
       const perf = await storage.getPerformance();
       perf.xp += amount;
-      const nextLevelXp = perf.level * 1000;
-      if (perf.xp >= nextLevelXp) {
+      
+      // Multi-level jump logic
+      while (perf.xp >= perf.level * 1000) {
+        perf.xp -= perf.level * 1000;
         perf.level += 1;
-        perf.xp -= nextLevelXp;
       }
+      
       await storage.savePerformance(perf);
     } catch (e) {
       handleFirestoreError(e, 'write', COLLECTIONS.PERFORMANCE);
@@ -234,6 +237,54 @@ export const storage = {
       return handleFirestoreError(e, 'list', COLLECTIONS.VIDEO_PERFORMANCE);
     }
   },
+
+  // Rankings (Arena)
+  getRankings: async (): Promise<any[]> => {
+    try {
+      const q = query(
+        collection(db, COLLECTIONS.RANKINGS), 
+        where('userId', '==', getUserId()),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    } catch (e) {
+      return handleFirestoreError(e, 'list', COLLECTIONS.RANKINGS);
+    }
+  },
+  saveRanking: async (ranking: any) => {
+    try {
+      const userId = getUserId();
+      const id = ranking.id || Math.random().toString(36).substring(2, 9);
+      await setDoc(doc(db, COLLECTIONS.RANKINGS, id), { 
+        ...ranking, 
+        id,
+        userId,
+        createdAt: serverTimestamp()
+      });
+      await storage.addXP(30);
+    } catch (e) {
+      handleFirestoreError(e, 'write', COLLECTIONS.RANKINGS);
+    }
+  },
+  deleteRanking: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.RANKINGS, id));
+    } catch (e) {
+      handleFirestoreError(e, 'delete', COLLECTIONS.RANKINGS);
+    }
+  },
+  subscribeRankings: (callback: (rankings: any[]) => void) => {
+    const q = query(
+      collection(db, COLLECTIONS.RANKINGS), 
+      where('userId', '==', getUserId()),
+      orderBy('createdAt', 'desc')
+    );
+    return onSnapshot(q, (snap) => {
+      callback(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
+  },
+
   saveVideoPerformance: async (record: Omit<VideoPostRecord, 'id' | 'userId'> & { id?: string }) => {
     try {
       const userId = getUserId();

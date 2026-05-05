@@ -55,3 +55,22 @@ export interface Account {
   updatedAt?: any;
 }
 
+export interface RankingSimulation {
+  id: string;
+  myRank: string;
+  myViews: string;
+  leaderRank: string;
+  leaderViews: string;
+  leaderGrowth: string;
+  results: {
+    diff: number;
+    daysRemaining: number;
+    projectedLeaderGrowth: number;
+    totalToOvertake: number;
+    dailyNeeded: number;
+    safetyBuffer: number;
+    progress: number;
+  };
+  createdAt?: any;
+}
+

@@ -52,24 +52,24 @@ export default function Accounts() {
 
   // Load from LocalStorage
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const saved = localStorage.getItem('ghub_accounts_vault_v2');
-      if (saved) {
-        try {
-          setAccounts(JSON.parse(saved));
-        } catch (e) {
-          console.error('Error parsing accounts:', e);
-          setAccounts([]);
-        }
+    const saved = localStorage.getItem('ghub_accounts_vault_v2');
+    if (saved) {
+      try {
+        // Obfuscation reversal
+        const decoded = JSON.parse(decodeURIComponent(window.atob(saved)));
+        setAccounts(decoded);
+      } catch (e) {
+        console.error('Error parsing accounts:', e);
+        setAccounts([]);
       }
-      setLoading(false);
-    }, 800); // Artificial loading for premium feel
-    return () => clearTimeout(timer);
+    }
+    setLoading(false);
   }, []);
 
-  // Save to LocalStorage
+  // Save to LocalStorage with Obfuscation (Vault Protocol)
   const saveToLocal = (newAccounts: LocalAccount[]) => {
-    localStorage.setItem('ghub_accounts_vault_v2', JSON.stringify(newAccounts));
+    const encoded = window.btoa(encodeURIComponent(JSON.stringify(newAccounts)));
+    localStorage.setItem('ghub_accounts_vault_v2', encoded);
     setAccounts(newAccounts);
   };
 
