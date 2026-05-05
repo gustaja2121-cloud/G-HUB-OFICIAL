@@ -155,7 +155,7 @@ export default function Ranking() {
             
             <div className="text-center md:text-left">
               <h1 className="text-7xl font-black tracking-tighter leading-none mb-4 italic uppercase">
-                ARENA <span className="text-red-500">NEXUS</span>
+                ARENA <span className="text-red-500">NEXUS v2</span>
               </h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-5">
                 <div className="flex items-center gap-3 px-4 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full text-[10px] font-black text-red-500 uppercase tracking-[0.3em]">
