@@ -429,4 +429,3 @@ export default function Ranking() {
 function Loader2({ className, size }: { className?: string, size?: number }) {
   return <RefreshCw className={className} size={size} />;
 }
-}
