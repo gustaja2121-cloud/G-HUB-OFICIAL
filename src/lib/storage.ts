@@ -243,11 +243,12 @@ export const storage = {
     try {
       const q = query(
         collection(db, COLLECTIONS.RANKINGS), 
-        where('userId', '==', getUserId()),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', getUserId())
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      // Client-side sort to avoid index requirement
+      return data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     } catch (e) {
       return handleFirestoreError(e, 'list', COLLECTIONS.RANKINGS);
     }
@@ -277,11 +278,12 @@ export const storage = {
   subscribeRankings: (callback: (rankings: any[]) => void) => {
     const q = query(
       collection(db, COLLECTIONS.RANKINGS), 
-      where('userId', '==', getUserId()),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', getUserId())
     );
     return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      // Client-side sort
+      callback(data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     });
   },
 
