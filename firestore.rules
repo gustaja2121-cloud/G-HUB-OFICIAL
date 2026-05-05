@@ -98,11 +98,7 @@ service cloud.firestore {
     }
 
     match /rankings/{rankId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(rankId) && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && isValidId(rankId) && isValidRanking(incoming());
-      allow update: if isSignedIn() && isValidId(rankId) && resource.data.userId == request.auth.uid && isValidRanking(incoming());
-      allow delete: if isSignedIn() && isValidId(rankId) && resource.data.userId == request.auth.uid;
+      allow read, write: if isSignedIn();
     }
 
     match /accounts/{accountId} {

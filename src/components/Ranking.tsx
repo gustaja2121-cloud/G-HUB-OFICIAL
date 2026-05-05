@@ -63,11 +63,17 @@ export default function Ranking() {
 
   // Load history
   useEffect(() => {
-    const unsub = storage.subscribeRankings((data) => {
-      setHistory(data as RankingSimulation[]);
+    let unsub: () => void;
+    try {
+      unsub = storage.subscribeRankings((data) => {
+        setHistory(data as RankingSimulation[]);
+        setIsLoadingHistory(false);
+      });
+    } catch (e) {
+      console.error('Error subscribing to rankings:', e);
       setIsLoadingHistory(false);
-    });
-    return () => unsub();
+    }
+    return () => unsub?.();
   }, []);
 
   const results = useMemo(() => {

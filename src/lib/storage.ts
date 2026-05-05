@@ -276,15 +276,31 @@ export const storage = {
     }
   },
   subscribeRankings: (callback: (rankings: any[]) => void) => {
-    const q = query(
-      collection(db, COLLECTIONS.RANKINGS), 
-      where('userId', '==', getUserId())
-    );
-    return onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      // Client-side sort
-      callback(data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    });
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        callback([]);
+        return () => {};
+      }
+      const q = query(
+        collection(db, COLLECTIONS.RANKINGS), 
+        where('userId', '==', userId)
+      );
+      return onSnapshot(q, 
+        (snap) => {
+          const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+          callback(data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        },
+        (error) => {
+          console.error("Firestore snapshot error:", error);
+          callback([]);
+        }
+      );
+    } catch (e) {
+      console.error("Subscribe error:", e);
+      callback([]);
+      return () => {};
+    }
   },
 
   saveVideoPerformance: async (record: Omit<VideoPostRecord, 'id' | 'userId'> & { id?: string }) => {
