@@ -148,13 +148,29 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="h-16 bg-accent text-white px-10 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 hover:scale-[1.03] active:scale-[0.97] transition-all shadow-2xl shadow-accent/30 group interactive-button"
-        >
-          <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
-          Injetar Capital
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={async () => {
+              if (confirm('ATENÇÃO: Deseja apagar TODOS os registros financeiros? Esta ação é irreversível.')) {
+                for (const entry of entries) {
+                  await storage.deleteFinance(entry.id);
+                }
+                await loadData();
+                showToast('Nexus Financeiro resetado.');
+              }
+            }}
+            className="h-16 px-6 rounded-3xl font-black uppercase tracking-widest text-[9px] border border-white/5 text-text-dim hover:bg-red-500/10 hover:text-red-500 transition-all opacity-40 hover:opacity-100"
+          >
+            Limpar Tudo
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="h-16 bg-accent text-white px-10 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 hover:scale-[1.03] active:scale-[0.97] transition-all shadow-2xl shadow-accent/30 group interactive-button"
+          >
+            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+            Injetar Capital
+          </button>
+        </div>
       </header>
 
       {/* High-Impact Asset Cards */}
@@ -328,18 +344,21 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
                           transition={{ delay: idx * 0.05 }}
                           className="premium-card p-6 flex items-center justify-between group interactive-button hover:bg-white/[0.03]"
                         >
-                          <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-2xl bg-bg flex items-center justify-center text-accent border border-white/5 group-hover:border-accent/40 shadow-inner">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-14 h-14 rounded-2xl bg-bg flex items-center justify-center text-accent border border-white/5 group-hover:border-accent/40 shadow-inner shrink-0">
                               <CreditCard size={22} />
                             </div>
-                            <div>
-                              <div className="text-base font-black text-white uppercase tracking-tight truncate max-w-[140px] mb-1">{entry.description}</div>
-                              <div className="text-lg font-black text-accent leading-none">R$ {entry.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-base font-black text-white uppercase tracking-tight truncate mb-1">{entry.description}</div>
+                              <div className="text-lg font-black text-accent leading-none truncate" title={entry.amount.toLocaleString('pt-BR')}>
+                                R$ {entry.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </div>
                             </div>
                           </div>
                           <button 
                             onClick={(e) => handleDelete(entry.id, e)}
-                            className="w-10 h-10 bg-accent/5 text-accent rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-white transition-all shadow-xl interactive-button"
+                            className="w-10 h-10 bg-accent/5 text-accent rounded-xl flex items-center justify-center opacity-40 group-hover:opacity-100 hover:bg-accent hover:text-white transition-all shadow-xl interactive-button shrink-0"
+                            title="Remover Registro"
                           >
                             <Trash2 size={18} />
                           </button>

@@ -10,6 +10,7 @@ import {
   limit,
   getDoc,
   onSnapshot,
+  addDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError } from './firebase';
@@ -19,7 +20,8 @@ import {
   DailyChecklistTask, 
   FinanceEntry,
   VideoPostRecord,
-  Account
+  Account,
+  RankingSimulation
 } from '../types';
 
 const COLLECTIONS = {
@@ -38,47 +40,32 @@ const getUserId = () => {
   return user.uid;
 };
 
-const LOCAL_STORAGE_KEY = 'ghub_backup_data';
-
-const getBackup = () => {
-  try {
-    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
-  } catch {
-    return {};
-  }
-};
-
-const saveBackup = (section: string, data: any) => {
-  try {
-    const backup = getBackup();
-    backup[section] = data;
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(backup));
-  } catch (e) {
-    console.error('Backup failure:', e);
-  }
-};
-
 export const storage = {
   // Notes
   getNotes: async (): Promise<Note[]> => {
     try {
-      const q = query(collection(db, COLLECTIONS.NOTES), where('userId', '==', getUserId()));
+      const userId = getUserId();
+      const q = query(
+        collection(db, COLLECTIONS.NOTES),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
       const snap = await getDocs(q);
       return snap.docs.map(d => ({ ...d.data(), id: d.id } as Note));
     } catch (e) {
       return handleFirestoreError(e, 'list', COLLECTIONS.NOTES);
     }
   },
-  saveNote: async (note: Note) => {
+  saveNote: async (note: Omit<Note, 'id'> & { id?: string }) => {
     try {
       const userId = getUserId();
-      await setDoc(doc(db, COLLECTIONS.NOTES, note.id), { 
+      const id = note.id || Math.random().toString(36).substring(2, 9);
+      await setDoc(doc(db, COLLECTIONS.NOTES, id), { 
         ...note, 
+        id,
         userId,
         updatedAt: serverTimestamp()
       });
-      await storage.addXP(10);
     } catch (e) {
       handleFirestoreError(e, 'write', COLLECTIONS.NOTES);
     }
@@ -91,98 +78,12 @@ export const storage = {
     }
   },
 
-  // Daily Checklist
-  getDailyChecklist: async (): Promise<DailyChecklistTask[]> => {
-    try {
-      const userId = getUserId();
-      const q = query(collection(db, COLLECTIONS.DAILY_CHECKLIST), where('userId', '==', userId));
-      const snap = await getDocs(q);
-      
-      let tasks = snap.docs.map(d => ({ ...d.data(), id: d.id } as DailyChecklistTask));
-      
-      if (tasks.length === 0) {
-        tasks = [
-          { id: '1', title: 'Postar vídeo', completed: false, type: 'post' },
-          { id: '2', title: 'Editar vídeo', completed: false, type: 'edit' },
-          { id: '3', title: 'Criar ideia', completed: false, type: 'idea' },
-        ];
-        // Save initial tasks
-        for (const t of tasks) {
-          await setDoc(doc(db, COLLECTIONS.DAILY_CHECKLIST, t.id), { ...t, userId });
-        }
-      }
-
-      // Check for daily reset
-      const perf = await storage.getPerformance();
-      const today = new Date().toDateString();
-      if (perf.lastResetDate !== today) {
-        const resetTasks = tasks.map(t => ({ ...t, completed: false }));
-        for (const t of resetTasks) {
-          await setDoc(doc(db, COLLECTIONS.DAILY_CHECKLIST, t.id), { ...t, userId });
-        }
-        perf.lastResetDate = today;
-        await storage.savePerformance(perf);
-        return resetTasks;
-      }
-      
-      return tasks;
-    } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.DAILY_CHECKLIST);
-    }
-  },
-  saveDailyChecklist: async (tasks: DailyChecklistTask[]) => {
-    try {
-      const userId = getUserId();
-      for (const t of tasks) {
-        await setDoc(doc(db, COLLECTIONS.DAILY_CHECKLIST, t.id), { 
-          ...t, 
-          userId,
-          updatedAt: serverTimestamp()
-        });
-      }
-    } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.DAILY_CHECKLIST);
-    }
-  },
-
-  // Finance
-  getFinance: async (): Promise<FinanceEntry[]> => {
-    try {
-      const q = query(collection(db, COLLECTIONS.FINANCE), where('userId', '==', getUserId()));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
-    } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.FINANCE);
-    }
-  },
-  saveFinance: async (entry: FinanceEntry) => {
-    try {
-      const userId = getUserId();
-      await setDoc(doc(db, COLLECTIONS.FINANCE, entry.id), { 
-        ...entry, 
-        userId,
-        updatedAt: serverTimestamp()
-      });
-      await storage.addXP(25);
-    } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.FINANCE);
-    }
-  },
-  deleteFinance: async (id: string) => {
-    try {
-      await deleteDoc(doc(db, COLLECTIONS.FINANCE, id));
-    } catch (e) {
-      handleFirestoreError(e, 'delete', COLLECTIONS.FINANCE);
-    }
-  },
-
-  // Performance
+  // Performance / XP
   getPerformance: async (): Promise<PerformanceState> => {
     try {
       const userId = getUserId();
-      const docRef = doc(db, COLLECTIONS.PERFORMANCE, userId);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) return snap.data() as PerformanceState;
+      const d = await getDoc(doc(db, COLLECTIONS.PERFORMANCE, userId));
+      if (d.exists()) return d.data() as PerformanceState;
       
       const initial: PerformanceState = {
         streak: 0,
@@ -191,8 +92,9 @@ export const storage = {
         totalVideosPosted: 0,
         xp: 0,
         level: 1,
-        lastResetDate: new Date().toDateString()
+        userId
       };
+      await setDoc(doc(db, COLLECTIONS.PERFORMANCE, userId), initial);
       return initial;
     } catch (e) {
       return handleFirestoreError(e, 'get', COLLECTIONS.PERFORMANCE);
@@ -212,54 +114,122 @@ export const storage = {
   },
   addXP: async (amount: number) => {
     try {
-      const perf = await storage.getPerformance();
-      perf.xp += amount;
+      const current = await storage.getPerformance();
+      let newXp = current.xp + amount;
+      let newLevel = current.level;
       
-      // Multi-level jump logic
-      while (perf.xp >= perf.level * 1000) {
-        perf.xp -= perf.level * 1000;
-        perf.level += 1;
+      while (newXp >= newLevel * 1000) {
+        newXp -= newLevel * 1000;
+        newLevel++;
       }
       
-      await storage.savePerformance(perf);
+      await storage.savePerformance({ 
+        ...current, 
+        xp: newXp, 
+        level: newLevel 
+      });
     } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.PERFORMANCE);
+      console.error('Error adding XP:', e);
     }
   },
 
-  // Video Performance
-  getVideoPerformance: async (): Promise<VideoPostRecord[]> => {
+  // Checklist
+  getChecklist: async (): Promise<DailyChecklistTask[]> => {
     try {
-      const q = query(collection(db, COLLECTIONS.VIDEO_PERFORMANCE), where('userId', '==', getUserId()));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord));
-    } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.VIDEO_PERFORMANCE);
-    }
-  },
-
-  // Rankings (Arena)
-  getRankings: async (): Promise<any[]> => {
-    try {
+      const userId = getUserId();
       const q = query(
-        collection(db, COLLECTIONS.RANKINGS), 
-        where('userId', '==', getUserId())
+        collection(db, COLLECTIONS.DAILY_CHECKLIST),
+        where('userId', '==', userId)
       );
       const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      // Client-side sort to avoid index requirement
+      return snap.docs.map(d => ({ ...d.data(), id: d.id } as DailyChecklistTask));
+    } catch (e) {
+      return handleFirestoreError(e, 'list', COLLECTIONS.DAILY_CHECKLIST);
+    }
+  },
+  saveChecklistTask: async (task: Omit<DailyChecklistTask, 'id'> & { id?: string }) => {
+    try {
+      const userId = getUserId();
+      const id = task.id || Math.random().toString(36).substring(2, 9);
+      await setDoc(doc(db, COLLECTIONS.DAILY_CHECKLIST, id), { 
+        ...task, 
+        id,
+        userId,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, 'write', COLLECTIONS.DAILY_CHECKLIST);
+    }
+  },
+  deleteChecklistTask: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.DAILY_CHECKLIST, id));
+    } catch (e) {
+      handleFirestoreError(e, 'delete', COLLECTIONS.DAILY_CHECKLIST);
+    }
+  },
+
+  // Finance
+  getFinance: async (): Promise<FinanceEntry[]> => {
+    try {
+      const userId = getUserId();
+      const q = query(
+        collection(db, COLLECTIONS.FINANCE),
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
+    } catch (e) {
+      return handleFirestoreError(e, 'list', COLLECTIONS.FINANCE);
+    }
+  },
+  saveFinance: async (entry: Omit<FinanceEntry, 'id'> & { id?: string }) => {
+    try {
+      const userId = getUserId();
+      const id = entry.id || Math.random().toString(36).substring(2, 9);
+      await setDoc(doc(db, COLLECTIONS.FINANCE, id), { 
+        ...entry, 
+        id,
+        userId,
+        updatedAt: serverTimestamp()
+      });
+      await storage.addXP(50);
+    } catch (e) {
+      handleFirestoreError(e, 'write', COLLECTIONS.FINANCE);
+    }
+  },
+  deleteFinance: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.FINANCE, id));
+    } catch (e) {
+      handleFirestoreError(e, 'delete', COLLECTIONS.FINANCE);
+    }
+  },
+
+  // Rankings
+  getRankings: async (): Promise<RankingSimulation[]> => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return [];
+      const q = query(
+        collection(db, COLLECTIONS.RANKINGS), 
+        where('userId', '==', userId)
+      );
+      const snap = await getDocs(q);
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
       return data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.RANKINGS);
+      return handleFirestoreError(e, 'list', COLLECTIONS.RANKINGS) as any;
     }
   },
   saveRanking: async (ranking: any) => {
     try {
-      const userId = getUserId();
-      const id = ranking.id || Math.random().toString(36).substring(2, 9);
-      await setDoc(doc(db, COLLECTIONS.RANKINGS, id), { 
+      const userId = auth.currentUser?.uid;
+      if (!userId) throw new Error('Unauthenticated');
+      
+      await addDoc(collection(db, COLLECTIONS.RANKINGS), { 
         ...ranking, 
-        id,
         userId,
         createdAt: serverTimestamp()
       });
@@ -275,7 +245,7 @@ export const storage = {
       handleFirestoreError(e, 'delete', COLLECTIONS.RANKINGS);
     }
   },
-  subscribeRankings: (callback: (rankings: any[]) => void) => {
+  subscribeRankings: (callback: (rankings: RankingSimulation[]) => void) => {
     try {
       const userId = auth.currentUser?.uid;
       if (!userId) {
@@ -286,16 +256,13 @@ export const storage = {
         collection(db, COLLECTIONS.RANKINGS), 
         where('userId', '==', userId)
       );
-      return onSnapshot(q, 
-        (snap) => {
-          const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-          callback(data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        },
-        (error) => {
-          console.error("Firestore snapshot error:", error);
-          callback([]);
-        }
-      );
+      return onSnapshot(q, (snap) => {
+        const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
+        callback(data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      }, (error) => {
+        console.error("Firestore snapshot error:", error);
+        callback([]);
+      });
     } catch (e) {
       console.error("Subscribe error:", e);
       callback([]);
@@ -303,6 +270,7 @@ export const storage = {
     }
   },
 
+  // Video Performance
   saveVideoPerformance: async (record: Omit<VideoPostRecord, 'id' | 'userId'> & { id?: string }) => {
     try {
       const userId = getUserId();
@@ -318,31 +286,49 @@ export const storage = {
     }
   },
   subscribeVideoPerformance: (callback: (records: VideoPostRecord[]) => void) => {
-    const q = query(collection(db, COLLECTIONS.VIDEO_PERFORMANCE), where('userId', '==', getUserId()));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord)));
-    });
+    try {
+      const userId = getUserId();
+      const q = query(
+        collection(db, COLLECTIONS.VIDEO_PERFORMANCE),
+        where('userId', '==', userId),
+        orderBy('data', 'desc')
+      );
+      return onSnapshot(q, (snap) => {
+        callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord)));
+      });
+    } catch (e) {
+      console.error('Error subscribing to video performance:', e);
+      callback([]);
+      return () => {};
+    }
   },
+
   // Accounts
+  saveAccount: async (account: Omit<Account, 'id' | 'userId'> & { id?: string }) => {
+    try {
+      const userId = getUserId();
+      const id = account.id || Math.random().toString(36).substring(2, 9);
+      await setDoc(doc(db, COLLECTIONS.ACCOUNTS, id), { 
+        ...account, 
+        id,
+        userId,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, 'write', COLLECTIONS.ACCOUNTS);
+    }
+  },
   getAccounts: async (): Promise<Account[]> => {
     try {
-      const q = query(collection(db, COLLECTIONS.ACCOUNTS), where('userId', '==', getUserId()));
+      const userId = getUserId();
+      const q = query(
+        collection(db, COLLECTIONS.ACCOUNTS),
+        where('userId', '==', userId)
+      );
       const snap = await getDocs(q);
       return snap.docs.map(d => ({ ...d.data(), id: d.id } as Account));
     } catch (e) {
       return handleFirestoreError(e, 'list', COLLECTIONS.ACCOUNTS);
-    }
-  },
-  saveAccount: async (account: Account) => {
-    try {
-      const userId = getUserId();
-      await setDoc(doc(db, COLLECTIONS.ACCOUNTS, account.id), { 
-        ...account, 
-        userId,
-        updatedAt: serverTimestamp() 
-      });
-    } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.ACCOUNTS);
     }
   },
   deleteAccount: async (id: string) => {
@@ -351,25 +337,5 @@ export const storage = {
     } catch (e) {
       handleFirestoreError(e, 'delete', COLLECTIONS.ACCOUNTS);
     }
-  },
-  subscribeAccounts: (callback: (accounts: Account[]) => void) => {
-    const q = query(collection(db, COLLECTIONS.ACCOUNTS), where('userId', '==', getUserId()));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as Account)));
-    });
-  },
-
-  // Listeners
-  subscribeFinance: (callback: (entries: FinanceEntry[]) => void) => {
-    const q = query(collection(db, COLLECTIONS.FINANCE), where('userId', '==', getUserId()));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry)));
-    });
-  },
-  subscribePerformance: (callback: (perf: PerformanceState) => void) => {
-    const userId = getUserId();
-    return onSnapshot(doc(db, COLLECTIONS.PERFORMANCE, userId), (snap) => {
-      if (snap.exists()) callback(snap.data() as PerformanceState);
-    });
-  },
+  }
 };
