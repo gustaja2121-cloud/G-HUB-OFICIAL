@@ -24,9 +24,11 @@ import { ptBR } from 'date-fns/locale';
 import { storage } from '../lib/storage';
 import { RankingSimulation } from '../types';
 import { useToast } from './Toast';
+import { useAuth } from '../lib/AuthContext';
 
-export default function Ranking() {
+export default function Ranking({ onNavigate }: { onNavigate?: (tab: any) => void }) {
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [myRank, setMyRank] = useState<string>('');
   const [myViews, setMyViews] = useState<string>('');
   const [leaderRank, setLeaderRank] = useState<string>('');
@@ -61,20 +63,50 @@ export default function Ranking() {
     return () => clearInterval(timer);
   }, [targetDate]);
 
-  // Load history
+  // Load history - depends on user being available
   useEffect(() => {
-    let unsub: () => void;
-    try {
-      unsub = storage.subscribeRankings((data) => {
-        setHistory(data as RankingSimulation[]);
-        setIsLoadingHistory(false);
-      });
-    } catch (e) {
-      console.error('Error subscribing to rankings:', e);
+    if (!user) {
       setIsLoadingHistory(false);
+      return;
     }
-    return () => unsub?.();
-  }, []);
+    
+    let unsub: (() => void) | undefined;
+    
+    // Small delay to ensure auth.currentUser is synced
+    const timeout = setTimeout(() => {
+      try {
+        unsub = storage.subscribeRankings((data) => {
+          setHistory(data as RankingSimulation[]);
+          setIsLoadingHistory(false);
+        });
+      } catch (e) {
+        console.error('Error subscribing to rankings:', e);
+        setIsLoadingHistory(false);
+      }
+    }, 300);
+    
+    // Safety timeout: if it takes more than 8s, stop loading
+    const safetyTimeout = setTimeout(() => {
+      setIsLoadingHistory(false);
+    }, 8000);
+    
+    return () => {
+      clearTimeout(timeout);
+      clearTimeout(safetyTimeout);
+      unsub?.();
+    };
+  }, [user]);
+
+  // Countdown calculation
+  const countdown = useMemo(() => {
+    const diffMs = targetDate.getTime() - now.getTime();
+    if (diffMs <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    return { days, hours, minutes, seconds };
+  }, [targetDate, now]);
 
   const results = useMemo(() => {
     const mine = parseFloat(myViews) || 0;
@@ -127,9 +159,16 @@ export default function Ranking() {
       
       setShowResult(true);
       showToast('Protocolo de Ataque Sincronizado', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro na simulação:', e);
-      showToast('Falha ao sincronizar com a Arena', 'error');
+      const msg = e?.message || 'Erro desconhecido';
+      // Try to extract a meaningful message
+      try {
+        const parsed = JSON.parse(msg);
+        showToast(`Erro: ${parsed.error || msg}`, 'error');
+      } catch {
+        showToast(`Falha: ${msg.substring(0, 80)}`, 'error');
+      }
     } finally {
       setCalculating(false);
     }
@@ -137,8 +176,13 @@ export default function Ranking() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Deseja excluir este registro da Arena?')) {
-      await storage.deleteRanking(id);
-      showToast('Registro eliminado');
+      try {
+        await storage.deleteRanking(id);
+        showToast('Registro eliminado');
+      } catch (e) {
+        console.error('Erro ao excluir:', e);
+        showToast('Erro ao excluir registro', 'error');
+      }
     }
   };
 
@@ -170,7 +214,7 @@ export default function Ranking() {
             
             <div className="text-center md:text-left">
               <h1 className="text-7xl font-black tracking-tighter leading-none mb-4 italic uppercase">
-                ARENA <span className="text-red-500">NEXUS v2</span>
+                ARENA <span className="text-red-500">NEXUS</span>
               </h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-5">
                 <div className="flex items-center gap-3 px-4 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full text-[10px] font-black text-red-500 uppercase tracking-[0.3em]">
@@ -190,7 +234,7 @@ export default function Ranking() {
                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Tempo para Fechamento</span>
             </div>
             <div className="text-4xl font-black text-white font-mono tracking-widest flex gap-2">
-               {Math.floor(differenceInDays(targetDate, now))}d : {now.getHours()}h : {now.getMinutes()}m
+               {countdown.days}d : {String(countdown.hours).padStart(2, '0')}h : {String(countdown.minutes).padStart(2, '0')}m
             </div>
           </div>
         </div>
@@ -209,7 +253,7 @@ export default function Ranking() {
                  </div>
                  <h3 className="text-3xl font-black uppercase tracking-tighter gradient-text">Simulação de Ataque</h3>
                </div>
-               <div className="px-4 py-2 bg-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest opacity-40">v3.0.4 - Strategic</div>
+               <div className="px-4 py-2 bg-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest opacity-40">v3.0.5 - Strategic</div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -409,7 +453,7 @@ export default function Ranking() {
                              </div>
                              <button 
                                onClick={(e) => { e.stopPropagation(); handleDelete(sim.id); }}
-                               className="p-2 text-text-dim opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+                               className="p-2 text-text-dim opacity-40 hover:opacity-100 hover:text-red-500 transition-all"
                              >
                                 <Trash2 size={16} />
                              </button>
@@ -418,16 +462,16 @@ export default function Ranking() {
                           <div className="grid grid-cols-2 gap-4">
                              <div>
                                 <div className="text-[8px] font-black text-text-dim/40 uppercase tracking-widest mb-1">Meta Diária</div>
-                                <div className="text-sm font-black text-white">{sim.results.dailyNeeded.toLocaleString()}</div>
+                                <div className="text-sm font-black text-white">{sim.results?.dailyNeeded?.toLocaleString() ?? '—'}</div>
                              </div>
                              <div className="text-right">
                                 <div className="text-[8px] font-black text-text-dim/40 uppercase tracking-widest mb-1">Status</div>
-                                <div className="text-xs font-black text-accent uppercase">{sim.results.progress.toFixed(0)}% SYNC</div>
+                                <div className="text-xs font-black text-accent uppercase">{sim.results?.progress?.toFixed(0) ?? '0'}% SYNC</div>
                              </div>
                           </div>
 
                           <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
-                             <div className="h-full bg-accent opacity-30" style={{ width: `${sim.results.progress}%` }} />
+                             <div className="h-full bg-accent opacity-30" style={{ width: `${sim.results?.progress ?? 0}%` }} />
                           </div>
                        </motion.div>
                      ))}
