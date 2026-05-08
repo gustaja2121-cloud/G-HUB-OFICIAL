@@ -273,7 +273,10 @@ export const storage = {
         }));
       }, (error) => {
         console.error("Firestore snapshot error (Rankings):", error);
-        // We still call callback with empty to stop loading state
+        // Dispatch a custom event that Ranking.tsx can listen to
+        window.dispatchEvent(new CustomEvent('firestore-error', { 
+          detail: { error: error.message, path: COLLECTIONS.RANKINGS, operation: 'list' } 
+        }));
         callback([]);
       });
     } catch (e) {

@@ -93,10 +93,18 @@ export default function Ranking({ onNavigate }: { onNavigate?: (tab: any) => voi
       }
     }, 8000);
     
+    // Listen for global firestore errors (from subscriptions)
+    const handleError = (e: any) => {
+      const { error, path, operation } = e.detail;
+      showToast(`Erro [${operation} em ${path}]: ${error}`, 'error');
+    };
+    window.addEventListener('firestore-error', handleError);
+    
     return () => {
       clearTimeout(timeout);
       clearTimeout(safetyTimeout);
       unsub?.();
+      window.removeEventListener('firestore-error', handleError);
     };
   }, [user]);
 
@@ -168,7 +176,7 @@ export default function Ranking({ onNavigate }: { onNavigate?: (tab: any) => voi
       // Try to extract a meaningful message
       try {
         const parsed = JSON.parse(msg);
-        showToast(`Erro: ${parsed.error || msg}`, 'error');
+        showToast(`Erro [${parsed.operationType} em ${parsed.path}]: ${parsed.error}`, 'error');
       } catch {
         showToast(`Falha: ${msg.substring(0, 80)}`, 'error');
       }
