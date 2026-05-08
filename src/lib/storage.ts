@@ -228,12 +228,20 @@ export const storage = {
       const userId = auth.currentUser?.uid;
       if (!userId) throw new Error('Unauthenticated');
       
-      await addDoc(collection(db, COLLECTIONS.RANKINGS), { 
+      const id = Math.random().toString(36).substring(2, 9);
+      await setDoc(doc(db, COLLECTIONS.RANKINGS, id), { 
         ...ranking, 
+        id,
         userId,
         createdAt: serverTimestamp()
       });
-      await storage.addXP(30);
+
+      // Optional XP gain - don't let this fail the whole operation
+      try {
+        await storage.addXP(30);
+      } catch (xpError) {
+        console.warn('XP update failed, but ranking was saved:', xpError);
+      }
     } catch (e) {
       handleFirestoreError(e, 'write', COLLECTIONS.RANKINGS);
     }
@@ -258,9 +266,14 @@ export const storage = {
       );
       return onSnapshot(q, (snap) => {
         const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
-        callback(data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        callback(data.sort((a: any, b: any) => {
+          const timeA = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime() / 1000 : 0);
+          const timeB = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime() / 1000 : 0);
+          return timeB - timeA;
+        }));
       }, (error) => {
-        console.error("Firestore snapshot error:", error);
+        console.error("Firestore snapshot error (Rankings):", error);
+        // We still call callback with empty to stop loading state
         callback([]);
       });
     } catch (e) {

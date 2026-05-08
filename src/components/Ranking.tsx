@@ -87,7 +87,10 @@ export default function Ranking({ onNavigate }: { onNavigate?: (tab: any) => voi
     
     // Safety timeout: if it takes more than 8s, stop loading
     const safetyTimeout = setTimeout(() => {
-      setIsLoadingHistory(false);
+      if (isLoadingHistory) {
+        setIsLoadingHistory(false);
+        showToast('Sincronização do Log de Guerra excedeu o tempo limite (Verifique permissões)', 'error');
+      }
     }, 8000);
     
     return () => {
