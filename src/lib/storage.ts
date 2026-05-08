@@ -47,11 +47,11 @@ export const storage = {
       const userId = getUserId();
       const q = query(
         collection(db, COLLECTIONS.NOTES),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id } as Note));
+      const notes = snap.docs.map(d => ({ ...d.data(), id: d.id } as Note));
+      return notes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (e) {
       return handleFirestoreError(e, 'list', COLLECTIONS.NOTES);
     }
@@ -175,11 +175,11 @@ export const storage = {
       const userId = getUserId();
       const q = query(
         collection(db, COLLECTIONS.FINANCE),
-        where('userId', '==', userId),
-        orderBy('date', 'desc')
+        where('userId', '==', userId)
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
+      const entries = snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
+      return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (e) {
       return handleFirestoreError(e, 'list', COLLECTIONS.FINANCE);
     }
@@ -290,11 +290,11 @@ export const storage = {
       const userId = getUserId();
       const q = query(
         collection(db, COLLECTIONS.VIDEO_PERFORMANCE),
-        where('userId', '==', userId),
-        orderBy('data', 'desc')
+        where('userId', '==', userId)
       );
       return onSnapshot(q, (snap) => {
-        callback(snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord)));
+        const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord));
+        callback(data.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()));
       });
     } catch (e) {
       console.error('Error subscribing to video performance:', e);
@@ -336,6 +336,92 @@ export const storage = {
       await deleteDoc(doc(db, COLLECTIONS.ACCOUNTS, id));
     } catch (e) {
       handleFirestoreError(e, 'delete', COLLECTIONS.ACCOUNTS);
+    }
+  },
+
+  // Aliases and additional methods needed by Dashboard
+  getDailyChecklist: async (): Promise<DailyChecklistTask[]> => {
+    return storage.getChecklist();
+  },
+  saveDailyChecklist: async (tasks: DailyChecklistTask[]) => {
+    try {
+      const userId = getUserId();
+      for (const task of tasks) {
+        const id = task.id || Math.random().toString(36).substring(2, 9);
+        await setDoc(doc(db, COLLECTIONS.DAILY_CHECKLIST, id), {
+          ...task,
+          id,
+          userId,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (e) {
+      handleFirestoreError(e, 'write', COLLECTIONS.DAILY_CHECKLIST);
+    }
+  },
+
+  // Video Performance - get all records
+  getVideoPerformance: async (): Promise<VideoPostRecord[]> => {
+    try {
+      const userId = getUserId();
+      const q = query(
+        collection(db, COLLECTIONS.VIDEO_PERFORMANCE),
+        where('userId', '==', userId)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ ...d.data(), id: d.id } as VideoPostRecord));
+    } catch (e) {
+      return handleFirestoreError(e, 'list', COLLECTIONS.VIDEO_PERFORMANCE);
+    }
+  },
+
+  // Real-time subscription for Finance
+  subscribeFinance: (callback: (entries: FinanceEntry[]) => void) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        callback([]);
+        return () => {};
+      }
+      const q = query(
+        collection(db, COLLECTIONS.FINANCE),
+        where('userId', '==', userId)
+      );
+      return onSnapshot(q, (snap) => {
+        const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
+        callback(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      }, (error) => {
+        console.error("Finance snapshot error:", error);
+        callback([]);
+      });
+    } catch (e) {
+      console.error("Subscribe finance error:", e);
+      callback([]);
+      return () => {};
+    }
+  },
+
+  // Real-time subscription for Performance
+  subscribePerformance: (callback: (perf: PerformanceState | null) => void) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        callback(null);
+        return () => {};
+      }
+      return onSnapshot(doc(db, COLLECTIONS.PERFORMANCE, userId), (snap) => {
+        if (snap.exists()) {
+          callback(snap.data() as PerformanceState);
+        } else {
+          callback(null);
+        }
+      }, (error) => {
+        console.error("Performance snapshot error:", error);
+        callback(null);
+      });
+    } catch (e) {
+      console.error("Subscribe performance error:", e);
+      return () => {};
     }
   }
 };

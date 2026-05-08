@@ -253,7 +253,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
                   <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-dim">Protocolo Ativo</span>
                 </div>
                 <div className="w-px h-4 bg-white/10" />
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-accent italic">Sequência de {perf.streak} Dias</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-accent italic">Sequência de {perf?.streak ?? 0} Dias</span>
               </div>
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
           <div className="flex justify-between items-end">
             <div className="space-y-1">
               <span className="text-[11px] font-black uppercase tracking-[0.25em] text-text-dim opacity-60">Nível Arquiteto</span>
-              <div className="text-3xl font-black text-white">{perf.level.toString().padStart(2, '0')}</div>
+              <div className="text-3xl font-black text-white">{(perf?.level ?? 1).toString().padStart(2, '0')}</div>
             </div>
             <div className="text-right space-y-1">
               <span className="text-[11px] font-black uppercase tracking-[0.25em] text-text-dim opacity-60">Progresso Sync</span>
@@ -321,7 +321,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
             <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-text-dim mb-8 group-hover:bg-accent/10 group-hover:text-accent transition-all border border-white/5">
               <Activity size={24} />
             </div>
-            <div className="text-6xl font-black tracking-tighter mb-2 uppercase leading-none">{perf.streak.toString().padStart(2, '0')}</div>
+            <div className="text-6xl font-black tracking-tighter mb-2 uppercase leading-none">{(perf?.streak ?? 0).toString().padStart(2, '0')}</div>
             <div className="text-[11px] font-black uppercase tracking-[0.3em] text-text-dim opacity-60">Dias Seguidores</div>
           </div>
           <div className="absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity rotate-12">
@@ -335,7 +335,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
             <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-text-dim mb-8 group-hover:bg-red-500/10 group-hover:text-red-400 transition-all border border-white/5">
               <Trophy size={24} />
             </div>
-            <div className="text-6xl font-black tracking-tighter mb-2 uppercase leading-none">{perf.level.toString().padStart(2, '0')}</div>
+            <div className="text-6xl font-black tracking-tighter mb-2 uppercase leading-none">{(perf?.level ?? 1).toString().padStart(2, '0')}</div>
             <div className="text-[11px] font-black uppercase tracking-[0.3em] text-text-dim opacity-60">Nível Operacional</div>
           </div>
           <div className="absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity -rotate-12">
@@ -547,7 +547,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
                 <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent"><Zap size={20} /></div>
                 <div>
                    <div className="text-[9px] font-black text-text-dim uppercase tracking-[0.3em]">Sequência</div>
-                   <div className="text-xl font-black text-white">{perf.streak} Dias</div>
+                   <div className="text-xl font-black text-white">{perf?.streak ?? 0} Dias</div>
                 </div>
              </div>
              <div className="flex items-center gap-3">
