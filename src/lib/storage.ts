@@ -31,7 +31,7 @@ const COLLECTIONS = {
   FINANCE: 'finance',
   VIDEO_PERFORMANCE: 'videoPerformance',
   ACCOUNTS: 'accounts',
-  RANKINGS: 'rankings',
+  RANKINGS: 'arena',
 };
 
 const getUserId = () => {
@@ -207,18 +207,19 @@ export const storage = {
     }
   },
 
-  // Rankings
+  // Rankings (Arena) - Restarted from Zero
   getRankings: async (): Promise<RankingSimulation[]> => {
     try {
       const userId = auth.currentUser?.uid;
       if (!userId) return [];
-      const q = query(
-        collection(db, COLLECTIONS.RANKINGS), 
-        where('userId', '==', userId)
-      );
+      const q = query(collection(db, COLLECTIONS.RANKINGS), where('userId', '==', userId));
       const snap = await getDocs(q);
       const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
-      return data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      return data.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime() / 1000 : 0);
+        const timeB = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime() / 1000 : 0);
+        return timeB - timeA;
+      });
     } catch (e) {
       return handleFirestoreError(e, 'list', COLLECTIONS.RANKINGS) as any;
     }
@@ -229,19 +230,19 @@ export const storage = {
       if (!userId) throw new Error('Unauthenticated');
       
       const id = Math.random().toString(36).substring(2, 9);
-      await setDoc(doc(db, COLLECTIONS.RANKINGS, id), { 
+      const data = { 
         ...ranking, 
         id,
         userId,
-        createdAt: serverTimestamp()
-      });
+        createdAt: serverTimestamp(),
+        timestamp: new Date().toISOString()
+      };
+      
+      await setDoc(doc(db, COLLECTIONS.RANKINGS, id), data);
 
-      // Optional XP gain - don't let this fail the whole operation
-      try {
-        await storage.addXP(30);
-      } catch (xpError) {
-        console.warn('XP update failed, but ranking was saved:', xpError);
-      }
+      // Silent XP gain
+      storage.addXP(30).catch(() => {}); 
+      return id;
     } catch (e) {
       handleFirestoreError(e, 'write', COLLECTIONS.RANKINGS);
     }
@@ -256,14 +257,9 @@ export const storage = {
   subscribeRankings: (callback: (rankings: RankingSimulation[]) => void) => {
     try {
       const userId = auth.currentUser?.uid;
-      if (!userId) {
-        callback([]);
-        return () => {};
-      }
-      const q = query(
-        collection(db, COLLECTIONS.RANKINGS), 
-        where('userId', '==', userId)
-      );
+      if (!userId) { callback([]); return () => {}; }
+      
+      const q = query(collection(db, COLLECTIONS.RANKINGS), where('userId', '==', userId));
       return onSnapshot(q, (snap) => {
         const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
         callback(data.sort((a: any, b: any) => {
@@ -272,15 +268,13 @@ export const storage = {
           return timeB - timeA;
         }));
       }, (error) => {
-        console.error("Firestore snapshot error (Rankings):", error);
-        // Dispatch a custom event that Ranking.tsx can listen to
+        console.error("Arena sync error:", error);
         window.dispatchEvent(new CustomEvent('firestore-error', { 
           detail: { error: error.message, path: COLLECTIONS.RANKINGS, operation: 'list' } 
         }));
         callback([]);
       });
     } catch (e) {
-      console.error("Subscribe error:", e);
       callback([]);
       return () => {};
     }
