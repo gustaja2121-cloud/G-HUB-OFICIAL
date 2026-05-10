@@ -207,21 +207,13 @@ export const storage = {
     }
   },
 
-  // Rankings (Arena) - Restarted from Zero
+  // Rankings (Arena) - Stored within User Document to bypass permission issues
   getRankings: async (): Promise<RankingSimulation[]> => {
     try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return [];
-      const q = query(collection(db, COLLECTIONS.RANKINGS), where('userId', '==', userId));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
-      return data.sort((a, b) => {
-        const timeA = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime() / 1000 : 0);
-        const timeB = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime() / 1000 : 0);
-        return timeB - timeA;
-      });
+      const perf = await storage.getPerformance();
+      return (perf.rankings || []).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } catch (e) {
-      return handleFirestoreError(e, 'list', COLLECTIONS.RANKINGS) as any;
+      return [];
     }
   },
   saveRanking: async (ranking: any) => {
@@ -229,29 +221,41 @@ export const storage = {
       const userId = auth.currentUser?.uid;
       if (!userId) throw new Error('Unauthenticated');
       
+      const current = await storage.getPerformance();
       const id = Math.random().toString(36).substring(2, 9);
-      const data = { 
+      const newSimulation = { 
         ...ranking, 
         id,
-        userId,
-        createdAt: serverTimestamp(),
-        timestamp: new Date().toISOString()
+        createdAt: new Date().toISOString()
       };
       
-      await setDoc(doc(db, COLLECTIONS.RANKINGS, id), data);
+      const updatedRankings = [newSimulation, ...(current.rankings || [])].slice(0, 50); // Limit to 50
+      
+      await setDoc(doc(db, COLLECTIONS.PERFORMANCE, userId), {
+        ...current,
+        rankings: updatedRankings,
+        updatedAt: serverTimestamp()
+      });
 
-      // Silent XP gain
       storage.addXP(30).catch(() => {}); 
       return id;
     } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.RANKINGS);
+      handleFirestoreError(e, 'write', COLLECTIONS.PERFORMANCE);
     }
   },
   deleteRanking: async (id: string) => {
     try {
-      await deleteDoc(doc(db, COLLECTIONS.RANKINGS, id));
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+      const current = await storage.getPerformance();
+      const updated = (current.rankings || []).filter(r => r.id !== id);
+      await setDoc(doc(db, COLLECTIONS.PERFORMANCE, userId), {
+        ...current,
+        rankings: updated,
+        updatedAt: serverTimestamp()
+      });
     } catch (e) {
-      handleFirestoreError(e, 'delete', COLLECTIONS.RANKINGS);
+      handleFirestoreError(e, 'delete', COLLECTIONS.PERFORMANCE);
     }
   },
   subscribeRankings: (callback: (rankings: RankingSimulation[]) => void) => {
@@ -259,19 +263,15 @@ export const storage = {
       const userId = auth.currentUser?.uid;
       if (!userId) { callback([]); return () => {}; }
       
-      const q = query(collection(db, COLLECTIONS.RANKINGS), where('userId', '==', userId));
-      return onSnapshot(q, (snap) => {
-        const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as RankingSimulation));
-        callback(data.sort((a: any, b: any) => {
-          const timeA = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime() / 1000 : 0);
-          const timeB = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime() / 1000 : 0);
-          return timeB - timeA;
-        }));
+      return onSnapshot(doc(db, COLLECTIONS.PERFORMANCE, userId), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as PerformanceState;
+          callback(data.rankings || []);
+        } else {
+          callback([]);
+        }
       }, (error) => {
         console.error("Arena sync error:", error);
-        window.dispatchEvent(new CustomEvent('firestore-error', { 
-          detail: { error: error.message, path: COLLECTIONS.RANKINGS, operation: 'list' } 
-        }));
         callback([]);
       });
     } catch (e) {

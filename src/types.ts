@@ -35,6 +35,7 @@ export interface PerformanceState {
   xp: number;
   level: number;
   lastResetDate?: string;
+  rankings?: RankingSimulation[];
 }
 
 export interface VideoPostRecord {
