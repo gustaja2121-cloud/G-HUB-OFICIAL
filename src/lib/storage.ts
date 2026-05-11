@@ -207,11 +207,14 @@ export const storage = {
     }
   },
 
-  // Rankings (Arena) - Stored within User Document to bypass permission issues
+  // Rankings (Arena) - Using hidden NOTES entries to bypass permission issues
   getRankings: async (): Promise<RankingSimulation[]> => {
     try {
-      const perf = await storage.getPerformance();
-      return (perf.rankings || []).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      const notes = await storage.getNotes();
+      return notes
+        .filter(n => n.title.startsWith('[ARENA_DATA]'))
+        .map(n => JSON.parse(n.content || '{}') as RankingSimulation)
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } catch (e) {
       return [];
     }
@@ -221,41 +224,33 @@ export const storage = {
       const userId = auth.currentUser?.uid;
       if (!userId) throw new Error('Unauthenticated');
       
-      const current = await storage.getPerformance();
       const id = Math.random().toString(36).substring(2, 9);
-      const newSimulation = { 
+      const simulation = { 
         ...ranking, 
         id,
         createdAt: new Date().toISOString()
       };
       
-      const updatedRankings = [newSimulation, ...(current.rankings || [])].slice(0, 50); // Limit to 50
+      // Save as a hidden Note
+      const noteData: Note = {
+        id,
+        title: `[ARENA_DATA] ${new Date().toLocaleString()}`,
+        content: JSON.stringify(simulation),
+        createdAt: new Date().toISOString()
+      };
       
-      await setDoc(doc(db, COLLECTIONS.PERFORMANCE, userId), {
-        ...current,
-        rankings: updatedRankings,
-        updatedAt: serverTimestamp()
-      });
-
+      await storage.saveNote(noteData);
       storage.addXP(30).catch(() => {}); 
       return id;
     } catch (e) {
-      handleFirestoreError(e, 'write', COLLECTIONS.PERFORMANCE);
+      handleFirestoreError(e, 'write', COLLECTIONS.NOTES);
     }
   },
   deleteRanking: async (id: string) => {
     try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return;
-      const current = await storage.getPerformance();
-      const updated = (current.rankings || []).filter(r => r.id !== id);
-      await setDoc(doc(db, COLLECTIONS.PERFORMANCE, userId), {
-        ...current,
-        rankings: updated,
-        updatedAt: serverTimestamp()
-      });
+      await storage.deleteNote(id);
     } catch (e) {
-      handleFirestoreError(e, 'delete', COLLECTIONS.PERFORMANCE);
+      handleFirestoreError(e, 'delete', COLLECTIONS.NOTES);
     }
   },
   subscribeRankings: (callback: (rankings: RankingSimulation[]) => void) => {
@@ -263,13 +258,13 @@ export const storage = {
       const userId = auth.currentUser?.uid;
       if (!userId) { callback([]); return () => {}; }
       
-      return onSnapshot(doc(db, COLLECTIONS.PERFORMANCE, userId), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data() as PerformanceState;
-          callback(data.rankings || []);
-        } else {
-          callback([]);
-        }
+      return onSnapshot(query(collection(db, COLLECTIONS.NOTES), where('userId', '==', userId)), (snap) => {
+        const data = snap.docs
+          .map(d => d.data() as Note)
+          .filter(n => n.title.startsWith('[ARENA_DATA]'))
+          .map(n => JSON.parse(n.content || '{}') as RankingSimulation);
+          
+        callback(data.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
       }, (error) => {
         console.error("Arena sync error:", error);
         callback([]);

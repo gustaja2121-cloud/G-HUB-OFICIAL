@@ -105,8 +105,10 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
   };
 
   const filteredNotes = notes.filter(n => 
-    n.title.toLowerCase().includes(search.toLowerCase()) || 
-    n.content?.toLowerCase().includes(search.toLowerCase())
+    !n.title.startsWith('[ARENA_DATA]') && (
+      n.title.toLowerCase().includes(search.toLowerCase()) || 
+      n.content?.toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   if (loading) return (
