@@ -16,7 +16,8 @@ import {
   Lightbulb,
   Loader2,
   Lock,
-  Trophy
+  Trophy,
+  Bot
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Notes from './components/Notes';
@@ -24,6 +25,7 @@ import Login from './components/Login';
 import Finance from './components/Finance';
 import Accounts from './components/Accounts';
 import Ranking from './components/Ranking';
+import Chat from './components/Chat';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
 import { useAuth } from './lib/AuthContext';
@@ -31,7 +33,7 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useEffect } from 'react';
 
-type Tab = 'dashboard' | 'notes' | 'finance' | 'accounts' | 'ranking';
+type Tab = 'dashboard' | 'notes' | 'finance' | 'accounts' | 'ranking' | 'chat';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -56,6 +58,7 @@ export default function App() {
     { id: 'ranking', label: '🏆 ARENA', icon: <Trophy size={20} /> },
     { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
     { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
+    { id: 'chat', label: '🤖 G-AI', icon: <Bot size={20} /> },
   ] as const;
 
   const renderContent = () => {
@@ -66,6 +69,7 @@ export default function App() {
       case 'finance': return <Finance {...commonProps} />;
       case 'accounts': return <Accounts {...commonProps} />;
       case 'ranking': return <Ranking {...commonProps} />;
+      case 'chat': return <Chat />;
       default: return <Dashboard {...commonProps} />;
     }
   };
