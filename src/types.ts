@@ -14,6 +14,20 @@ export interface DailyChecklistTask {
   type: 'post' | 'edit' | 'idea' | 'other';
 }
 
+export interface VideoChecklistStep {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
+export interface VideoChecklist {
+  id: string;
+  title: string;
+  platform: 'Instagram' | 'TikTok' | 'YouTube' | 'WhatsApp' | 'Outro';
+  steps: VideoChecklistStep[];
+  createdAt: string;
+}
+
 export interface FinanceEntry {
   id: string;
   amount: number;
