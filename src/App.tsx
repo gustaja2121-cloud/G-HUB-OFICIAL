@@ -6,26 +6,18 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  LayoutDashboard, 
-  Calendar, 
   StickyNote, 
-  Plus,
   LogOut,
-  FileText,
   DollarSign,
-  Lightbulb,
   Loader2,
   Lock,
-  Trophy,
-  Bot
+  Trophy
 } from 'lucide-react';
-import Dashboard from './components/Dashboard';
 import Notes from './components/Notes';
 import Login from './components/Login';
 import Finance from './components/Finance';
 import Accounts from './components/Accounts';
 import Ranking from './components/Ranking';
-import Chat from './components/Chat';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
 import { useAuth } from './lib/AuthContext';
@@ -33,11 +25,11 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useEffect } from 'react';
 
-type Tab = 'dashboard' | 'notes' | 'finance' | 'accounts' | 'ranking' | 'chat';
+type Tab = 'notes' | 'finance' | 'accounts' | 'ranking';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>('finance');
 
   useEffect(() => {
     const testConnection = async () => {
@@ -53,24 +45,20 @@ export default function App() {
   }, []);
 
   const navItems = [
-    { id: 'dashboard', label: '📊 PAINEL', icon: <LayoutDashboard size={20} /> },
     { id: 'finance', label: '🏦 FINANCEIRO', icon: <DollarSign size={20} /> },
     { id: 'ranking', label: '🏆 ARENA', icon: <Trophy size={20} /> },
     { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
     { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
-    { id: 'chat', label: '🤖 G-AI', icon: <Bot size={20} /> },
   ] as const;
 
   const renderContent = () => {
     const commonProps = { onNavigate: setActiveTab };
     switch (activeTab) {
-      case 'dashboard': return <Dashboard {...commonProps} />;
       case 'notes': return <Notes {...commonProps} />;
       case 'finance': return <Finance {...commonProps} />;
       case 'accounts': return <Accounts {...commonProps} />;
       case 'ranking': return <Ranking {...commonProps} />;
-      case 'chat': return <Chat />;
-      default: return <Dashboard {...commonProps} />;
+      default: return <Finance {...commonProps} />;
     }
   };
 
