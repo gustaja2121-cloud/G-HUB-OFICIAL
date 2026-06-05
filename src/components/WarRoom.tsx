@@ -5,7 +5,7 @@ import { WarRoomPostLog, WarRoomConfig } from '../types';
 import { useToast } from './Toast';
 import { format, differenceInDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Target, Clock, Rocket, Calendar, Activity, Trash2, Hourglass, Plus, X, Users, Zap } from 'lucide-react';
+import { Target, Clock, Rocket, Calendar, Activity, Trash2, Hourglass, Plus, X, Users, Zap, History } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function WarRoom() {
