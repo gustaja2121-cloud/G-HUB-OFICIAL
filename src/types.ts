@@ -102,4 +102,5 @@ export interface WarRoomConfig {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   dailyTarget: number;
+  accounts: { id: string; platform: string; handle: string; }[];
 }
