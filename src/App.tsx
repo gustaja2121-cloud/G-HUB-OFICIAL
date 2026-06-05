@@ -46,7 +46,7 @@ export default function App() {
 
   const navItems = [
     { id: 'finance', label: '🏦 FINANCEIRO', icon: <DollarSign size={20} /> },
-    { id: 'ranking', label: '🏆 ARENA', icon: <Trophy size={20} /> },
+    { id: 'ranking', label: '🏆 PAINEL VIEW', icon: <Trophy size={20} /> },
     { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
     { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
   ] as const;
