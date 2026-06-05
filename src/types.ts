@@ -95,6 +95,7 @@ export interface WarRoomPostLog {
   account: string;
   postedAt: string; // ISO string
   userId: string;
+  timerDurationMinutes: number; // Novo campo
 }
 
 export interface WarRoomConfig {

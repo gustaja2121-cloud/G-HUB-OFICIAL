@@ -469,6 +469,13 @@ export const storage = {
       console.error(e);
     }
   },
+  deleteWarRoomLog: async (id: string) => {
+    try {
+      await storage.deleteNote(id);
+    } catch (e) {
+      console.error(e);
+    }
+  },
   getWarRoomConfig: async (): Promise<WarRoomConfig | null> => {
     try {
       const notes = await storage.getNotes();
