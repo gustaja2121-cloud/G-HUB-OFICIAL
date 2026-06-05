@@ -21,7 +21,9 @@ import {
   FinanceEntry,
   VideoPostRecord,
   Account,
-  RankingSimulation
+  RankingSimulation,
+  WarRoomPostLog,
+  WarRoomConfig
 } from '../types';
 
 const COLLECTIONS = {
@@ -427,6 +429,73 @@ export const storage = {
     } catch (e) {
       console.error("Subscribe performance error:", e);
       return () => {};
+    }
+  },
+
+  // WAR ROOM
+  getWarRoomLogs: async (): Promise<WarRoomPostLog[]> => {
+    try {
+      const notes = await storage.getNotes();
+      return notes
+        .filter(n => n.title.startsWith('[WAR_ROOM_LOG]'))
+        .map(n => JSON.parse(n.content || '{}') as WarRoomPostLog)
+        .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+    } catch (e) {
+      return [];
+    }
+  },
+  saveWarRoomLog: async (log: Omit<WarRoomPostLog, 'id' | 'userId'> & { id?: string }) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) throw new Error('Unauthenticated');
+      
+      const id = log.id || Math.random().toString(36).substring(2, 9);
+      const postLog: WarRoomPostLog = { 
+        ...log, 
+        id,
+        userId
+      };
+      
+      const noteData: Note = {
+        id,
+        title: `[WAR_ROOM_LOG] ${id}`,
+        content: JSON.stringify(postLog),
+        createdAt: postLog.postedAt
+      };
+      
+      await storage.saveNote(noteData);
+      return id;
+    } catch (e) {
+      console.error(e);
+    }
+  },
+  getWarRoomConfig: async (): Promise<WarRoomConfig | null> => {
+    try {
+      const notes = await storage.getNotes();
+      const configNote = notes.find(n => n.title === '[WAR_ROOM_CONFIG]');
+      if (configNote) {
+        return JSON.parse(configNote.content || '{}') as WarRoomConfig;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  },
+  saveWarRoomConfig: async (config: WarRoomConfig) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+      
+      const noteData: Note = {
+        id: 'war_room_config',
+        title: '[WAR_ROOM_CONFIG]',
+        content: JSON.stringify(config),
+        createdAt: new Date().toISOString()
+      };
+      
+      await storage.saveNote(noteData);
+    } catch (e) {
+      console.error(e);
     }
   }
 };

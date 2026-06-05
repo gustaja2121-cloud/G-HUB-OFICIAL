@@ -89,3 +89,16 @@ export interface RankingSimulation {
   createdAt?: any;
 }
 
+export interface WarRoomPostLog {
+  id: string;
+  platform: string;
+  account: string;
+  postedAt: string; // ISO string
+  userId: string;
+}
+
+export interface WarRoomConfig {
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  dailyTarget: number;
+}

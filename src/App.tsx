@@ -11,13 +11,15 @@ import {
   DollarSign,
   Loader2,
   Lock,
-  Trophy
+  Trophy,
+  Target
 } from 'lucide-react';
 import Notes from './components/Notes';
 import Login from './components/Login';
 import Finance from './components/Finance';
 import Accounts from './components/Accounts';
 import Ranking from './components/Ranking';
+import WarRoom from './components/WarRoom';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
 import { useAuth } from './lib/AuthContext';
@@ -25,7 +27,7 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useEffect } from 'react';
 
-type Tab = 'notes' | 'finance' | 'accounts' | 'ranking';
+type Tab = 'notes' | 'finance' | 'accounts' | 'ranking' | 'warroom';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -47,20 +49,10 @@ export default function App() {
   const navItems = [
     { id: 'finance', label: '🏦 FINANCEIRO', icon: <DollarSign size={20} /> },
     { id: 'ranking', label: '🏆 PAINEL VIEW', icon: <Trophy size={20} /> },
+    { id: 'warroom', label: '🚀 WAR ROOM', icon: <Target size={20} /> },
     { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
     { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
   ] as const;
-
-  const renderContent = () => {
-    const commonProps = { onNavigate: setActiveTab };
-    switch (activeTab) {
-      case 'notes': return <Notes {...commonProps} />;
-      case 'finance': return <Finance {...commonProps} />;
-      case 'accounts': return <Accounts {...commonProps} />;
-      case 'ranking': return <Ranking {...commonProps} />;
-      default: return <Finance {...commonProps} />;
-    }
-  };
 
   if (loading) {
     return (
@@ -112,7 +104,7 @@ export default function App() {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => setActiveTab(item.id as Tab)}
                 className={cn(
                   "relative flex items-center h-14 px-5 rounded-2xl transition-all duration-300 group overflow-hidden shrink-0 interactive-button",
                   activeTab === item.id 
@@ -166,7 +158,7 @@ export default function App() {
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => setActiveTab(item.id as Tab)}
               className={cn(
                 "p-3 rounded-2xl transition-all interactive-button",
                 activeTab === item.id ? "text-accent bg-accent/10 shadow-glow" : "text-text-dim"
@@ -186,19 +178,11 @@ export default function App() {
 
         <main className="flex-1 w-full p-6 md:p-12 lg:p-16 overflow-y-auto max-h-screen custom-scrollbar selection:bg-accent/20">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -15, filter: "blur(4px)" }}
-              transition={{ 
-                duration: 0.4,
-                ease: [0.23, 1, 0.32, 1] 
-              }}
-              className="max-w-6xl mx-auto"
-            >
-              {renderContent()}
-            </motion.div>
+            {activeTab === 'finance' && <motion.div key="finance" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto"><Finance onNavigate={setActiveTab} /></motion.div>}
+            {activeTab === 'ranking' && <motion.div key="ranking" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto"><Ranking onNavigate={setActiveTab} /></motion.div>}
+            {activeTab === 'warroom' && <motion.div key="warroom" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto"><WarRoom /></motion.div>}
+            {activeTab === 'accounts' && <motion.div key="accounts" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto"><Accounts onNavigate={setActiveTab} /></motion.div>}
+            {activeTab === 'notes' && <motion.div key="notes" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto"><Notes onNavigate={setActiveTab} /></motion.div>}
           </AnimatePresence>
         </main>
       </div>
