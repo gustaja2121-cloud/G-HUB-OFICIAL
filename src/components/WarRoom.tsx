@@ -37,19 +37,21 @@ export default function WarRoom() {
     return isNaN(d.getTime()) ? new Date() : d;
   };
 
-  const loadData = async () => {
+  const loadData = async (shouldLoadConfig = false) => {
     const loadedLogs = await storage.getWarRoomLogs();
     const validLogs = (loadedLogs || []).filter(Boolean);
     setLogs(validLogs);
     
-    const loadedConfig = await storage.getWarRoomConfig();
-    if (loadedConfig) {
-      setConfig(loadedConfig);
-      setCompName((loadedConfig as any).compName || '');
-      setStartDate(loadedConfig.startDate || format(new Date(), 'yyyy-MM-dd'));
-      setEndDate(loadedConfig.endDate || format(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
-      setDailyTarget(loadedConfig.dailyTarget || 9);
-      setAccountsList((loadedConfig.accounts || []).filter(Boolean));
+    if (shouldLoadConfig) {
+      const loadedConfig = await storage.getWarRoomConfig();
+      if (loadedConfig) {
+        setConfig(loadedConfig);
+        setCompName((loadedConfig as any).compName || '');
+        setStartDate(loadedConfig.startDate || format(new Date(), 'yyyy-MM-dd'));
+        setEndDate(loadedConfig.endDate || format(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
+        setDailyTarget(loadedConfig.dailyTarget || 9);
+        setAccountsList((loadedConfig.accounts || []).filter(Boolean));
+      }
     }
     
     if (validLogs.length > 0) {
@@ -69,7 +71,7 @@ export default function WarRoom() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
     const interval = setInterval(() => {
       setTimeLeft(prev => (prev <= 0 ? 0 : prev - 1));
     }, 1000);
@@ -83,15 +85,28 @@ export default function WarRoom() {
     showToast('Configurações salvas!', 'success');
   };
 
-  const handleAddAccount = () => {
+  const handleAddAccount = async () => {
     if (!newAccHandle) return;
     const updated = [...accountsList, { id: crypto.randomUUID(), platform: newAccPlatform, handle: newAccHandle }];
     setAccountsList(updated);
     setNewAccHandle('');
+    
+    // Auto-save so they aren't lost
+    const newConfig: WarRoomConfig = { startDate, endDate, dailyTarget, accounts: updated, compName };
+    await storage.saveWarRoomConfig(newConfig);
+    setConfig(newConfig);
+    showToast('Conta vinculada com sucesso!', 'success');
   };
 
-  const handleRemoveAccount = (id: string) => {
-    setAccountsList(prev => prev.filter(a => a.id !== id));
+  const handleRemoveAccount = async (id: string) => {
+    const updated = accountsList.filter(a => a.id !== id);
+    setAccountsList(updated);
+    
+    // Auto-save so they aren't lost
+    const newConfig: WarRoomConfig = { startDate, endDate, dailyTarget, accounts: updated, compName };
+    await storage.saveWarRoomConfig(newConfig);
+    setConfig(newConfig);
+    showToast('Conta removida com sucesso!', 'success');
   };
 
   const handleConfirmPost = async () => {
