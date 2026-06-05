@@ -33,20 +33,21 @@ export default function WarRoom() {
 
   const loadData = async () => {
     const loadedLogs = await storage.getWarRoomLogs();
-    setLogs(loadedLogs);
+    const validLogs = (loadedLogs || []).filter(Boolean);
+    setLogs(validLogs);
     
     const loadedConfig = await storage.getWarRoomConfig();
     if (loadedConfig) {
       setConfig(loadedConfig);
-      setStartDate(loadedConfig.startDate);
-      setEndDate(loadedConfig.endDate);
-      setDailyTarget(loadedConfig.dailyTarget);
-      setAccountsList(loadedConfig.accounts || []);
+      setStartDate(loadedConfig.startDate || format(new Date(), 'yyyy-MM-dd'));
+      setEndDate(loadedConfig.endDate || format(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
+      setDailyTarget(loadedConfig.dailyTarget || 9);
+      setAccountsList((loadedConfig.accounts || []).filter(Boolean));
     }
     
     // Check timer
-    if (loadedLogs.length > 0) {
-      const latestLog = loadedLogs[0];
+    if (validLogs.length > 0) {
+      const latestLog = validLogs[0];
       const lastPostTime = new Date(latestLog.postedAt).getTime();
       const now = Date.now();
       const elapsed = now - lastPostTime;
@@ -236,7 +237,7 @@ export default function WarRoom() {
             ) : (
               <div className="space-y-5">
                 <div className="space-y-3">
-                  {accountsList.map(acc => (
+                  {accountsList.filter(Boolean).map(acc => (
                     <div key={acc.id} className="flex items-center justify-between p-4 bg-black/30 rounded-2xl border border-white/5 focus-within:border-accent/40 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className={cn(
@@ -345,7 +346,7 @@ export default function WarRoom() {
                 <h3 className="text-[9px] font-black text-white uppercase tracking-widest">Suas Contas (Armas)</h3>
                 
                 <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-                  {accountsList.map(acc => (
+                  {accountsList.filter(Boolean).map(acc => (
                     <div key={acc.id} className="flex justify-between items-center bg-black/20 p-2 rounded-lg border border-white/5">
                       <span className="text-[10px] font-bold text-white ml-2">{acc.handle} <span className="text-text-dim">({acc.platform})</span></span>
                       <button onClick={() => handleRemoveAccount(acc.id)} className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-500/20 rounded">
@@ -416,7 +417,7 @@ export default function WarRoom() {
                       </div>
                       
                       <div className="space-y-2">
-                        {cycleGroups[timestamp].map(log => (
+                        {cycleGroups[timestamp].filter(Boolean).map(log => (
                           <div key={log.id} className="flex items-center justify-between group/item">
                             <div className="flex items-center gap-2">
                               <span className={cn("w-1.5 h-1.5 rounded-full", log.platform === 'TikTok' ? "bg-[#00f2fe]" : log.platform === 'Instagram' ? "bg-pink-500" : "bg-red-500")} />

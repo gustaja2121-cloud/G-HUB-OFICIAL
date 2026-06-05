@@ -438,7 +438,11 @@ export const storage = {
       const notes = await storage.getNotes();
       return notes
         .filter(n => n.title.startsWith('[WAR_ROOM_LOG]'))
-        .map(n => JSON.parse(n.content || '{}') as WarRoomPostLog)
+        .map(n => {
+          try { return JSON.parse(n.content || '{}') as WarRoomPostLog; }
+          catch (e) { return null as any; }
+        })
+        .filter(n => n && n.postedAt)
         .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
     } catch (e) {
       return [];
