@@ -1,349 +1,293 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Trophy, 
-  Sword, 
-  Zap, 
-  Timer, 
-  Flame, 
-  ChevronRight,
-  History,
-  Trash2,
-  Target as TargetIcon,
-  ShieldAlert,
-  Loader2,
-  ArrowUpRight
-} from 'lucide-react';
-import { addDays, endOfWeek, setHours, setMinutes, setSeconds } from 'date-fns';
-import { storage } from '../lib/storage';
-import { RankingSimulation } from '../types';
-import { useToast } from './Toast';
-import { useAuth } from '../lib/AuthContext';
+import { TrendingUp, Eye, Trophy, Calculator, ArrowUp, User } from 'lucide-react';
+import { cn } from '../lib/utils';
 
-export default function Ranking() {
-  const { showToast } = useToast();
-  const { user } = useAuth();
-  
-  // Inputs
-  const [myRank, setMyRank] = useState<string>('');
-  const [myViews, setMyViews] = useState<string>('');
-  const [leaderRank, setLeaderRank] = useState<string>('');
-  const [leaderViews, setLeaderViews] = useState<string>('');
-  const [leaderGrowth, setLeaderGrowth] = useState<string>('');
-  
-  // UI State
-  const [calculating, setCalculating] = useState(false);
-  const [showResult, setShowResult] = useState(false);
-  const [history, setHistory] = useState<RankingSimulation[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+export default function Ranking({ onNavigate }: { onNavigate: (tab: any) => void }) {
+  const [minhaPos, setMinhaPos] = useState('');
+  const [outraPos, setOutraPos] = useState('');
+  const [minhasViews, setMinhasViews] = useState('');
+  const [viewsOutro, setViewsOutro] = useState('');
+  const [resultado, setResultado] = useState<number | null>(null);
+  const [calculado, setCalculado] = useState(false);
 
-  // Countdown Logic
-  const getNextSunday = () => {
-    const now = new Date();
-    let target = endOfWeek(now, { weekStartsOn: 1 });
-    target = setHours(target, 23);
-    target = setMinutes(target, 59);
-    target = setSeconds(target, 59);
-    if (now > target) target = addDays(target, 7);
-    return target;
+  const parsarNum = (v: string) => {
+    const limpo = v.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(limpo);
+    return isNaN(n) ? 0 : n;
   };
 
-  const [targetDate, setTargetDate] = useState(getNextSunday());
-  const [now, setNow] = useState(new Date());
+  const formatarNum = (n: number) =>
+    n.toLocaleString('pt-BR');
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const currentNow = new Date();
-      setNow(currentNow);
-      if (currentNow > targetDate) setTargetDate(getNextSunday());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [targetDate]);
-
-  // Sync History
-  useEffect(() => {
-    if (!user) return;
-    
-    setIsLoadingHistory(true);
-    const unsub = storage.subscribeRankings((data) => {
-      setHistory(data);
-      setIsLoadingHistory(false);
-    });
-
-    const handleError = (e: any) => {
-      const { error, path, operation } = e.detail;
-      showToast(`Acesso Arena [${operation}]: ${error}`, 'error');
-      setIsLoadingHistory(false);
-    };
-    window.addEventListener('firestore-error', handleError);
-    
-    return () => {
-      unsub();
-      window.removeEventListener('firestore-error', handleError);
-    };
-  }, [user]);
-
-  // Calculation Logic
-  const results = useMemo(() => {
-    const mine = parseFloat(myViews) || 0;
-    const leader = parseFloat(leaderViews) || 0;
-    const lGrowth = parseFloat(leaderGrowth) || 0;
-    const diff = Math.max(0, leader - mine);
-    
-    const diffMs = targetDate.getTime() - now.getTime();
-    const daysRemaining = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-    
-    const projectedLeaderGrowth = lGrowth * daysRemaining;
-    const totalToOvertake = diff + projectedLeaderGrowth;
-    const dailyNeeded = totalToOvertake > 0 ? Math.ceil(totalToOvertake / daysRemaining) : 0;
-    const safetyBuffer = Math.ceil(dailyNeeded * 0.15);
-
-    return {
-      diff,
-      daysRemaining,
-      projectedLeaderGrowth,
-      totalToOvertake,
-      dailyNeeded,
-      safetyBuffer,
-      progress: leader > 0 ? Math.min((mine / leader) * 100, 100) : 0
-    };
-  }, [myViews, leaderViews, leaderGrowth, targetDate, now]);
-
-  const handleCalculate = async () => {
-    if (!myViews || !leaderViews) {
-      showToast('Preencha os números obrigatórios', 'error');
-      return;
-    }
-    
-    setCalculating(true);
-    try {
-      const simulation = {
-        myRank, myViews, leaderRank, leaderViews, leaderGrowth,
-        results,
-        date: new Date().toISOString()
-      };
-
-      await storage.saveRanking(simulation);
-      setShowResult(true);
-      showToast('Estratégia de Ataque Sincronizada', 'success');
-    } catch (e: any) {
-      console.error('Erro Arena:', e);
-      try {
-        const parsed = JSON.parse(e.message);
-        showToast(`Erro Arena [${parsed.operationType}]: ${parsed.error}`, 'error');
-      } catch {
-        showToast('Falha na conexão com o Nexus', 'error');
-      }
-    } finally {
-      setCalculating(false);
-    }
+  const calcular = () => {
+    const mV = parsarNum(minhasViews);
+    const oV = parsarNum(viewsOutro);
+    const diff = oV - mV;
+    setResultado(diff > 0 ? diff : 0);
+    setCalculado(true);
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (confirm('Remover registro de guerra?')) {
-      try {
-        await storage.deleteRanking(id);
-        showToast('Registro eliminado');
-      } catch (e) {
-        showToast('Erro ao remover registro', 'error');
-      }
-    }
-  };
-
-  const countdown = useMemo(() => {
-    const diffMs = targetDate.getTime() - now.getTime();
-    const d = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const h = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return { d, h, m };
-  }, [targetDate, now]);
+  const jaUltrapassou = resultado === 0 && calculado;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-32 pt-10 px-4 md:px-0">
-      {/* Header Section */}
-      <header className="relative overflow-hidden rounded-[3rem] bg-surface/40 backdrop-blur-3xl border border-white/5 p-12 shadow-2xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-transparent to-amber-500/10" />
-        <div className="relative flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="flex items-center gap-8">
-            <div className="w-20 h-20 bg-gradient-to-tr from-red-600 to-amber-500 rounded-3xl flex items-center justify-center text-white shadow-xl">
-              <Sword size={40} />
-            </div>
-            <div>
-              <h1 className="text-5xl font-black tracking-tighter leading-none mb-2 uppercase italic">
-                ARENA <span className="text-red-500">NEXUS</span>
-              </h1>
-              <div className="flex items-center gap-3 text-[10px] font-black text-text-dim uppercase tracking-[0.3em]">
-                <Flame size={14} className="text-red-500" /> Protocolo de Dominação v2
-              </div>
-            </div>
-          </div>
-          <div className="bg-black/40 border border-white/5 p-6 rounded-3xl text-center">
-            <div className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">Ciclo de Guerra Finaliza em:</div>
-            <div className="text-3xl font-black font-mono text-white tracking-widest">
-              {countdown.d}d {String(countdown.h).padStart(2, '0')}h {String(countdown.m).padStart(2, '0')}m
-            </div>
-          </div>
+    <div className="max-w-5xl mx-auto space-y-8 pb-24 pt-10">
+
+      {/* HEADER */}
+      <header className="flex items-center gap-6 bg-surface/30 backdrop-blur-3xl border border-white/5 p-10 rounded-[3rem]">
+        <div className="w-20 h-20 bg-accent rounded-[2rem] flex items-center justify-center text-white border border-white/10 shadow-2xl shadow-accent/30">
+          <TrendingUp size={36} />
+        </div>
+        <div>
+          <h1 className="text-5xl font-black tracking-tighter leading-none mb-2 gradient-text uppercase">
+            Painel View
+          </h1>
+          <p className="text-[11px] font-black text-text-dim uppercase tracking-[0.4em] opacity-60 italic">
+            Calculadora de Domínio de Views
+          </p>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Main Inputs */}
-        <div className="lg:col-span-7 space-y-10">
-          <section className="premium-card">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500">
-                <Zap size={20} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* ===== LADO ESQUERDO: INPUTS ===== */}
+        <div className="space-y-5">
+
+          {/* Posições */}
+          <div className="glass p-8 rounded-[2.5rem] border border-white/5">
+            <h2 className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] mb-6 opacity-60 flex items-center gap-2">
+              <Trophy size={14} className="text-accent" /> Posições no Ranking
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Minha Posição */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-accent/20 rounded-lg flex items-center justify-center">
+                    <User size={14} className="text-accent" />
+                  </div>
+                  <label className="text-[10px] font-black text-accent uppercase tracking-widest">
+                    Sua Posição
+                  </label>
+                </div>
+                <input
+                  type="number"
+                  placeholder="Ex: 5"
+                  value={minhaPos}
+                  onChange={e => { setMinhaPos(e.target.value); setCalculado(false); }}
+                  className="w-full h-16 bg-black/30 border border-white/10 rounded-2xl px-5 text-2xl font-black text-white placeholder:text-white/20 placeholder:text-base outline-none focus:border-accent transition-colors"
+                />
               </div>
-              <h3 className="text-2xl font-black uppercase tracking-tighter">Parâmetros de Batalha</h3>
+
+              {/* Posição do Outro */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-white/5 rounded-lg flex items-center justify-center">
+                    <User size={14} className="text-text-dim" />
+                  </div>
+                  <label className="text-[10px] font-black text-text-dim uppercase tracking-widest">
+                    Posição do Outro
+                  </label>
+                </div>
+                <input
+                  type="number"
+                  placeholder="Ex: 2"
+                  value={outraPos}
+                  onChange={e => { setOutraPos(e.target.value); setCalculado(false); }}
+                  className="w-full h-16 bg-black/30 border border-white/10 rounded-2xl px-5 text-2xl font-black text-white placeholder:text-white/20 placeholder:text-base outline-none focus:border-white/40 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Views */}
+          <div className="glass p-8 rounded-[2.5rem] border border-white/5">
+            <h2 className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] mb-6 opacity-60 flex items-center gap-2">
+              <Eye size={14} className="text-accent" /> Total de Views
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Minhas Views */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-accent/20 rounded-lg flex items-center justify-center">
+                    <Eye size={14} className="text-accent" />
+                  </div>
+                  <label className="text-[10px] font-black text-accent uppercase tracking-widest">
+                    Suas Views
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: 125.750"
+                  value={minhasViews}
+                  onChange={e => { setMinhasViews(e.target.value); setCalculado(false); }}
+                  className="w-full h-16 bg-black/30 border border-white/10 rounded-2xl px-5 text-lg font-black text-white placeholder:text-white/20 placeholder:text-sm outline-none focus:border-accent transition-colors"
+                />
+              </div>
+
+              {/* Views do Outro */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-white/5 rounded-lg flex items-center justify-center">
+                    <Eye size={14} className="text-text-dim" />
+                  </div>
+                  <label className="text-[10px] font-black text-text-dim uppercase tracking-widest">
+                    Views do Outro
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: 140.980"
+                  value={viewsOutro}
+                  onChange={e => { setViewsOutro(e.target.value); setCalculado(false); }}
+                  className="w-full h-16 bg-black/30 border border-white/10 rounded-2xl px-5 text-lg font-black text-white placeholder:text-white/20 placeholder:text-sm outline-none focus:border-white/40 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Botão Calcular */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={calcular}
+            disabled={!minhasViews || !viewsOutro}
+            className="w-full h-18 py-5 bg-accent text-white font-black text-sm uppercase tracking-[0.4em] rounded-[2rem] flex items-center justify-center gap-3 shadow-glow disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            <Calculator size={22} />
+            Calcular Domínio
+          </motion.button>
+        </div>
+
+        {/* ===== LADO DIREITO: RESULTADO ===== */}
+        <div className="glass rounded-[2.5rem] border border-white/5 p-8 flex flex-col gap-6">
+          <h2 className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em] opacity-60 flex items-center gap-2">
+            <ArrowUp size={14} className="text-accent" /> Resultado da Análise
+          </h2>
+
+          {/* Cards de posição e views */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Você */}
+            <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 space-y-3">
+              <div className="text-[9px] font-black text-accent uppercase tracking-[0.3em]">Você</div>
+              <div className="flex items-end gap-2">
+                <span className="text-[10px] text-text-dim font-bold uppercase">Posição</span>
+                <span className="text-3xl font-black text-white leading-none">#{minhaPos || '?'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Eye size={12} className="text-accent" />
+                <span className="text-sm font-black text-white">
+                  {minhasViews ? formatarNum(parsarNum(minhasViews)) : '0'} views
+                </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* My Numbers */}
-              <div className="space-y-6">
-                <div className="text-[10px] font-black uppercase tracking-widest text-red-500/60">Seus Números</div>
-                <div className="space-y-4">
-                  <div className="relative group/input">
-                    <label className="absolute left-5 top-2.5 text-[8px] font-black text-text-dim opacity-40 uppercase">Sua Posição</label>
-                    <input 
-                      type="number" value={myRank} onChange={e => setMyRank(e.target.value)}
-                      className="w-full h-16 bg-bg/40 border border-white/5 rounded-2xl px-5 pt-5 font-black text-xl outline-none focus:border-red-500/40 transition-all"
-                      placeholder="Ex: 5"
+            {/* Outro */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
+              <div className="text-[9px] font-black text-text-dim uppercase tracking-[0.3em]">Outro</div>
+              <div className="flex items-end gap-2">
+                <span className="text-[10px] text-text-dim font-bold uppercase">Posição</span>
+                <span className="text-3xl font-black text-white leading-none">#{outraPos || '?'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Eye size={12} className="text-text-dim" />
+                <span className="text-sm font-black text-white">
+                  {viewsOutro ? formatarNum(parsarNum(viewsOutro)) : '0'} views
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra visual comparação */}
+          {calculado && minhasViews && viewsOutro && (
+            <div className="space-y-3">
+              <div className="text-[9px] font-black text-text-dim uppercase tracking-widest opacity-60">Comparação Visual</div>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-black text-accent">
+                    <span>Você</span>
+                    <span>{formatarNum(parsarNum(minhasViews))}</span>
+                  </div>
+                  <div className="h-3 bg-black/30 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((parsarNum(minhasViews) / Math.max(parsarNum(minhasViews), parsarNum(viewsOutro))) * 100, 100)}%` }}
+                      transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+                      className="h-full bg-accent rounded-full"
                     />
                   </div>
-                  <div className="relative group/input">
-                    <label className="absolute left-5 top-2.5 text-[8px] font-black text-text-dim opacity-40 uppercase">Suas Views</label>
-                    <input 
-                      type="number" value={myViews} onChange={e => setMyViews(e.target.value)}
-                      className="w-full h-16 bg-bg/40 border border-white/5 rounded-2xl px-5 pt-5 font-black text-xl outline-none focus:border-red-500/40 transition-all"
-                      placeholder="0"
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-black text-text-dim">
+                    <span>Outro</span>
+                    <span>{formatarNum(parsarNum(viewsOutro))}</span>
+                  </div>
+                  <div className="h-3 bg-black/30 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((parsarNum(viewsOutro) / Math.max(parsarNum(minhasViews), parsarNum(viewsOutro))) * 100, 100)}%` }}
+                      transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+                      className="h-full bg-white/30 rounded-full"
                     />
                   </div>
                 </div>
               </div>
-
-              {/* Leader Numbers */}
-              <div className="space-y-6">
-                <div className="text-[10px] font-black uppercase tracking-widest text-amber-500/60">Alvo Principal</div>
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="relative group/input flex-1">
-                      <label className="absolute left-5 top-2.5 text-[8px] font-black text-text-dim opacity-40 uppercase">Posição</label>
-                      <input 
-                        type="number" value={leaderRank} onChange={e => setLeaderRank(e.target.value)}
-                        className="w-full h-16 bg-bg/40 border border-white/5 rounded-2xl px-5 pt-5 font-black text-xl outline-none focus:border-amber-500/40 transition-all"
-                        placeholder="1"
-                      />
-                    </div>
-                    <div className="relative group/input flex-[2]">
-                      <label className="absolute left-5 top-2.5 text-[8px] font-black text-text-dim opacity-40 uppercase">Ganho Diário</label>
-                      <input 
-                        type="number" value={leaderGrowth} onChange={e => setLeaderGrowth(e.target.value)}
-                        className="w-full h-16 bg-bg/40 border border-white/5 rounded-2xl px-5 pt-5 font-black text-xl outline-none focus:border-amber-500/40 transition-all"
-                        placeholder="Ex: 5000"
-                      />
-                    </div>
-                  </div>
-                  <div className="relative group/input">
-                    <label className="absolute left-5 top-2.5 text-[8px] font-black text-text-dim opacity-40 uppercase">Views do Alvo</label>
-                    <input 
-                      type="number" value={leaderViews} onChange={e => setLeaderViews(e.target.value)}
-                      className="w-full h-16 bg-bg/40 border border-white/5 rounded-2xl px-5 pt-5 font-black text-xl outline-none focus:border-amber-500/40 transition-all"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
+          )}
 
-            <button 
-              onClick={handleCalculate}
-              disabled={calculating || !myViews || !leaderViews}
-              className="w-full h-20 mt-10 bg-white text-black rounded-3xl font-black text-sm uppercase tracking-[0.4em] hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-4 disabled:opacity-10"
-            >
-              {calculating ? <Loader2 className="animate-spin" /> : <>INICIAR ATAQUE <ChevronRight size={18} /></>}
-            </button>
-          </section>
-
-          {/* Results Display */}
+          {/* Resultado Principal */}
           <AnimatePresence>
-            {showResult && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                className="premium-card bg-gradient-to-br from-red-600/5 to-amber-600/5 border-white/10"
+            {calculado && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                className={cn(
+                  "rounded-2xl p-6 border text-center flex-1 flex flex-col items-center justify-center gap-3",
+                  jaUltrapassou
+                    ? "bg-green-500/10 border-green-500/30"
+                    : "bg-accent/10 border-accent/30"
+                )}
               >
-                <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-10 pb-8 border-b border-white/5">
-                  <div className="text-center md:text-left">
-                    <div className="text-[10px] font-black uppercase text-red-500 tracking-widest mb-2">Meta de Ultrapassagem</div>
-                    <div className="text-6xl font-black text-white flex items-center gap-4">
-                      {myRank}º <ArrowUpRight className="text-red-500" /> {leaderRank}º
+                {jaUltrapassou ? (
+                  <>
+                    <Trophy size={40} className="text-green-400" />
+                    <div className="text-[11px] font-black text-green-400 uppercase tracking-[0.3em]">
+                      Você já ultrapassou! 🏆
                     </div>
-                  </div>
-                  <div className="text-center md:text-right">
-                    <div className="text-4xl font-black text-white">+{results.totalToOvertake.toLocaleString()}</div>
-                    <div className="text-[9px] font-black text-text-dim uppercase opacity-40">Views Totais Faltantes</div>
-                  </div>
-                </div>
+                    <div className="text-sm font-bold text-green-300/70">
+                      Continue postando para aumentar a vantagem!
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[11px] font-black text-text-dim uppercase tracking-[0.3em]">
+                      Views necessárias para passar
+                    </div>
+                    <div className="text-5xl font-black text-accent leading-none">
+                      {formatarNum(resultado ?? 0)}
+                    </div>
+                    <div className="text-[10px] font-black text-text-dim uppercase tracking-widest opacity-60">
+                      views a mais que você precisa
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-black/20 rounded-3xl border border-white/5">
-                    <div className="text-[10px] font-black uppercase text-text-dim mb-4 tracking-widest">Meta Diária Base</div>
-                    <div className="text-4xl font-black text-white">{results.dailyNeeded.toLocaleString()}</div>
-                    <p className="text-[9px] font-bold text-text-dim mt-1 opacity-50">Ciclo de {results.daysRemaining} dias restantes.</p>
-                  </div>
-                  <div className="p-6 bg-red-500/10 rounded-3xl border border-red-500/20">
-                    <div className="text-[10px] font-black uppercase text-red-500 mb-4 tracking-widest">Meta de Segurança (+15%)</div>
-                    <div className="text-4xl font-black text-white">{(results.dailyNeeded + results.safetyBuffer).toLocaleString()}</div>
-                    <p className="text-[9px] font-bold text-red-500 opacity-50 uppercase">Dominação Garantida</p>
-                  </div>
-                </div>
+            {!calculado && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex-1 flex flex-col items-center justify-center gap-4 opacity-20 py-8"
+              >
+                <Calculator size={60} />
+                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-center">
+                  Preencha os dados e calcule
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        {/* Sidebar History */}
-        <div className="lg:col-span-5">
-          <div className="premium-card !p-8 h-full flex flex-col bg-surface/20">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <History className="opacity-40" size={20} />
-                <h3 className="text-lg font-black uppercase tracking-widest opacity-60">Log de Guerra</h3>
-              </div>
-              <div className="text-[10px] font-black text-red-500">{history.length} SALVOS</div>
-            </div>
-
-            <div className="flex-1 space-y-4 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
-              {isLoadingHistory ? (
-                <div className="py-10 text-center opacity-20"><Loader2 className="animate-spin mx-auto mb-2" /> Carregando...</div>
-              ) : history.length === 0 ? (
-                <div className="py-20 text-center opacity-10 border border-dashed border-white/10 rounded-3xl">Nenhum registro</div>
-              ) : (
-                history.map(sim => (
-                  <motion.div 
-                    key={sim.id} layout
-                    className="p-5 bg-white/5 rounded-2xl border border-white/5 hover:border-red-500/20 transition-all cursor-pointer relative group"
-                    onClick={() => {
-                      setMyRank(sim.myRank); setMyViews(sim.myViews);
-                      setLeaderRank(sim.leaderRank); setLeaderViews(sim.leaderViews);
-                      setLeaderGrowth(sim.leaderGrowth); setShowResult(true);
-                    }}
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="font-black text-white italic">{sim.myRank}º <span className="text-red-500 mx-1">→</span> {sim.leaderRank}º</div>
-                      <button onClick={e => handleDelete(e, sim.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-500 transition-opacity">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="flex justify-between text-[9px] font-black uppercase opacity-40">
-                      <span>Meta: {sim.results?.dailyNeeded?.toLocaleString() ?? 0}</span>
-                      <span>{sim.results?.progress?.toFixed(0)}% SYNC</span>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>
