@@ -124,20 +124,29 @@ export default function WarRoom() {
     loadData();
   };
 
-  // Calculations
+  // Funções seguras de data
+  const safeDate = (dString: string) => {
+    const d = new Date(dString);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
   const logsInComp = config ? logs.filter(l => {
-    const d = new Date(l.postedAt);
-    return d >= new Date(config.startDate) && d <= new Date(config.endDate + 'T23:59:59');
+    if (!l.postedAt) return false;
+    const d = safeDate(l.postedAt);
+    return d >= safeDate(config.startDate) && d <= safeDate(config.endDate + 'T23:59:59');
   }) : [];
   
-  const totalDays = config ? Math.max(1, differenceInDays(new Date(config.endDate), new Date(config.startDate)) + 1) : 1;
-  const daysPassed = config ? Math.max(0, differenceInDays(new Date(), new Date(config.startDate))) : 0;
+  const totalDays = config ? Math.max(1, differenceInDays(safeDate(config.endDate), safeDate(config.startDate)) + 1) : 1;
+  const daysPassed = config ? Math.max(0, differenceInDays(new Date(), safeDate(config.startDate))) : 0;
   const currentDayProgress = Math.min(100, (daysPassed / totalDays) * 100);
   
   const totalTarget = config ? config.dailyTarget * totalDays : 0;
   const videosProgress = totalTarget > 0 ? Math.min(100, (logsInComp.length / totalTarget) * 100) : 0;
   
-  const logsToday = logs.filter(l => isSameDay(new Date(l.postedAt), new Date()));
+  const logsToday = logs.filter(l => {
+    if (!l.postedAt) return false;
+    return isSameDay(safeDate(l.postedAt), new Date());
+  });
   
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -150,8 +159,9 @@ export default function WarRoom() {
   const recentLogs = logs.slice(0, 15);
   const cycleGroups: Record<string, WarRoomPostLog[]> = {};
   recentLogs.forEach(log => {
-    if (!cycleGroups[log.postedAt]) cycleGroups[log.postedAt] = [];
-    cycleGroups[log.postedAt].push(log);
+    const key = log.postedAt || new Date().toISOString();
+    if (!cycleGroups[key]) cycleGroups[key] = [];
+    cycleGroups[key].push(log);
   });
 
   return (
@@ -401,7 +411,7 @@ export default function WarRoom() {
                     >
                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-[9px] font-black text-text-dim uppercase tracking-widest">
-                          Ciclo de {format(new Date(timestamp), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          Ciclo de {timestamp ? format(safeDate(timestamp), "dd/MM 'às' HH:mm", { locale: ptBR }) : 'Desconhecido'}
                         </span>
                       </div>
                       
