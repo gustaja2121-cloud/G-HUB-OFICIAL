@@ -17,6 +17,10 @@ export default function WarRoom() {
   const [timerMinutes, setTimerMinutes] = useState(60); 
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
+  // Post video logging state
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [postQuantity, setPostQuantity] = useState(1);
+
   // Config Form
   const [compName, setCompName] = useState('');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -90,15 +94,30 @@ export default function WarRoom() {
     setAccountsList(prev => prev.filter(a => a.id !== id));
   };
 
-  const handlePostVideo = async (acc: { id: string; platform: string; handle: string; }) => {
-    const now = new Date().toISOString();
-    await storage.saveWarRoomLog({
-      platform: acc.platform,
-      account: acc.handle,
-      postedAt: now,
-      timerDurationMinutes: timerMinutes
-    } as any);
-    showToast(`Postado em ${acc.handle}!`, 'success');
+  const handleConfirmPost = async () => {
+    if (!selectedAccountId) return;
+    const acc = accountsList.find(a => a.id === selectedAccountId);
+    if (!acc) return;
+
+    const now = new Date();
+    
+    // Save multiple logs based on postQuantity
+    const promises = Array.from({ length: postQuantity }).map((_, index) => {
+      // Offset by index seconds to ensure distinct, sorted timestamps
+      const postedTime = new Date(now.getTime() - index * 1000).toISOString();
+      return storage.saveWarRoomLog({
+        platform: acc.platform,
+        account: acc.handle,
+        postedAt: postedTime,
+        timerDurationMinutes: timerMinutes
+      });
+    });
+
+    await Promise.all(promises);
+    showToast(`${postQuantity} vídeo(s) registrado(s) em ${acc.handle}!`, 'success');
+    
+    setPostQuantity(1);
+    setSelectedAccountId('');
     loadData();
   };
 
@@ -267,6 +286,67 @@ export default function WarRoom() {
                   </div>
                 </div>
               )}
+
+              {/* Linha Divisória */}
+              <div className="my-6 border-t border-white/5" />
+
+              {/* Formulário de Registro de Postagem */}
+              <div className="space-y-4 text-left">
+                <h3 className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em] mb-2 flex items-center gap-1.5 justify-center">
+                  <Rocket size={12} className="text-accent" /> Registrar Postagem
+                </h3>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black text-text-dim uppercase tracking-widest block">Escolher Conta</label>
+                  <select
+                    value={selectedAccountId}
+                    onChange={e => setSelectedAccountId(e.target.value)}
+                    className="w-full h-11 bg-black/30 border border-white/10 rounded-xl px-3 text-xs font-bold text-white outline-none focus:border-accent"
+                  >
+                    <option value="">-- Selecione uma conta --</option>
+                    {accountsList.map(acc => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.handle} ({acc.platform})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black text-text-dim uppercase tracking-widest block">Quantidade de Vídeos</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPostQuantity(q => Math.max(1, q - 1))}
+                      className="w-9 h-9 bg-white/5 hover:bg-white/10 text-white rounded-lg flex items-center justify-center font-black transition-all"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={postQuantity}
+                      onChange={e => setPostQuantity(Math.max(1, Number(e.target.value)))}
+                      className="flex-1 h-9 bg-black/30 border border-white/10 rounded-lg text-center text-xs font-black text-white outline-none focus:border-accent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPostQuantity(q => q + 1)}
+                      className="w-9 h-9 bg-white/5 hover:bg-white/10 text-white rounded-lg flex items-center justify-center font-black transition-all"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleConfirmPost}
+                  disabled={!selectedAccountId}
+                  className="w-full h-11 bg-accent/20 hover:bg-accent disabled:opacity-40 disabled:hover:bg-accent/20 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl transition-all border border-accent/30 flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <Play size={10} fill="white" /> Postei!
+                </button>
+              </div>
             </div>
           </div>
 
@@ -342,14 +422,6 @@ export default function WarRoom() {
                             <div className="text-xl font-black text-white leading-none">{accLogsToday.length}</div>
                             <div className="text-[8px] font-black text-text-dim uppercase tracking-widest">postados</div>
                           </div>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handlePostVideo(acc)}
-                            className="h-10 px-5 bg-accent text-white font-black text-[9px] uppercase tracking-widest rounded-xl flex items-center gap-2 shadow-[0_0_12px_rgba(230,57,70,0.3)]"
-                          >
-                            <Play size={12} fill="white" /> Postei
-                          </motion.button>
                           <button onClick={() => handleRemoveAccount(acc.id)} className="w-8 h-8 flex items-center justify-center text-text-dim hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-all">
                             <X size={14} />
                           </button>
