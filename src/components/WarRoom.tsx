@@ -73,7 +73,7 @@ export default function WarRoom() {
   }, []);
 
   const handleSaveConfig = async () => {
-    const newConfig = { startDate, endDate, dailyTarget, accounts: accountsList, compName } as any;
+    const newConfig: WarRoomConfig = { startDate, endDate, dailyTarget, accounts: accountsList, compName };
     await storage.saveWarRoomConfig(newConfig);
     setConfig(newConfig);
     showToast('Configurações salvas!', 'success');

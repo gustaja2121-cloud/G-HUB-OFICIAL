@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { storage } from '../lib/storage';
 import { FinanceEntry } from '../types';
 import { motion, AnimatePresence } from 'motion/react';

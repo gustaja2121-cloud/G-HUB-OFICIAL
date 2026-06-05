@@ -50,6 +50,7 @@ export interface PerformanceState {
   level: number;
   lastResetDate?: string;
   rankings?: RankingSimulation[];
+  userId?: string;
 }
 
 export interface VideoPostRecord {
@@ -103,4 +104,6 @@ export interface WarRoomConfig {
   endDate: string; // YYYY-MM-DD
   dailyTarget: number;
   accounts: { id: string; platform: string; handle: string; }[];
+  compName?: string;
 }
+
