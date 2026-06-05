@@ -162,7 +162,7 @@ export default function WarRoom() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="text-5xl font-black text-red-500 uppercase tracking-widest animate-bounce mt-2 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                  <div className="text-5xl font-black text-red-500 uppercase tracking-widest mt-2 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">
                     POSTAR AGORA!
                   </div>
                   <div className="text-[10px] font-black text-red-400/60 uppercase tracking-[0.3em]">
