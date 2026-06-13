@@ -21,9 +21,7 @@ import {
   FinanceEntry,
   VideoPostRecord,
   Account,
-  RankingSimulation,
-  WarRoomPostLog,
-  WarRoomConfig
+  RankingSimulation
 } from '../types';
 
 const COLLECTIONS = {
@@ -382,29 +380,20 @@ export const storage = {
     }
   },
 
-  // Real-time subscription for Finance
-  subscribeFinance: (callback: (entries: FinanceEntry[]) => void) => {
+  // Accounts - retrieve finance entries by account ID
+  getVideosByAccount: async (accountId: string): Promise<FinanceEntry[]> => {
     try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) {
-        callback([]);
-        return () => {};
-      }
+      const userId = getUserId();
       const q = query(
         collection(db, COLLECTIONS.FINANCE),
-        where('userId', '==', userId)
+        where('userId', '==', userId),
+        where('accountId', '==', accountId)
       );
-      return onSnapshot(q, (snap) => {
-        const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
-        callback(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      }, (error) => {
-        console.error("Finance snapshot error:", error);
-        callback([]);
-      });
+      const snap = await getDocs(q);
+      const entries = snap.docs.map(d => ({ ...d.data(), id: d.id } as FinanceEntry));
+      return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (e) {
-      console.error("Subscribe finance error:", e);
-      callback([]);
-      return () => {};
+      return handleFirestoreError(e, 'list', COLLECTIONS.FINANCE);
     }
   },
 
@@ -432,81 +421,5 @@ export const storage = {
     }
   },
 
-  // WAR ROOM
-  getWarRoomLogs: async (): Promise<WarRoomPostLog[]> => {
-    try {
-      const notes = await storage.getNotes();
-      return notes
-        .filter(n => n.title.startsWith('[WAR_ROOM_LOG]'))
-        .map(n => {
-          try { return JSON.parse(n.content || '{}') as WarRoomPostLog; }
-          catch (e) { return null as any; }
-        })
-        .filter(n => n && n.postedAt)
-        .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
-    } catch (e) {
-      return [];
-    }
-  },
-  saveWarRoomLog: async (log: Omit<WarRoomPostLog, 'id' | 'userId'> & { id?: string }) => {
-    try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) throw new Error('Unauthenticated');
-      
-      const id = log.id || Math.random().toString(36).substring(2, 9);
-      const postLog: WarRoomPostLog = { 
-        ...log, 
-        id,
-        userId
-      };
-      
-      const noteData: Note = {
-        id,
-        title: `[WAR_ROOM_LOG] ${id}`,
-        content: JSON.stringify(postLog),
-        createdAt: postLog.postedAt
-      };
-      
-      await storage.saveNote(noteData);
-      return id;
-    } catch (e) {
-      console.error(e);
-    }
-  },
-  deleteWarRoomLog: async (id: string) => {
-    try {
-      await storage.deleteNote(id);
-    } catch (e) {
-      console.error(e);
-    }
-  },
-  getWarRoomConfig: async (): Promise<WarRoomConfig | null> => {
-    try {
-      const notes = await storage.getNotes();
-      const configNote = notes.find(n => n.title === '[WAR_ROOM_CONFIG]');
-      if (configNote) {
-        return JSON.parse(configNote.content || '{}') as WarRoomConfig;
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  },
-  saveWarRoomConfig: async (config: WarRoomConfig) => {
-    try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return;
-      
-      const noteData: Note = {
-        id: 'war_room_config',
-        title: '[WAR_ROOM_CONFIG]',
-        content: JSON.stringify(config),
-        createdAt: new Date().toISOString()
-      };
-      
-      await storage.saveNote(noteData);
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // WAR ROOM functions removed
 };

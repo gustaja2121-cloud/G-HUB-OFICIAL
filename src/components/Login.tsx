@@ -33,7 +33,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-login text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans" style={{ backgroundImage: "url('/login_background.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="red-flash"></div>
+        <div className="red-flash"></div>
+        <div className="red-flash"></div>
+        <div className="red-flash"></div>
+
       {/* Background Ambience */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px] mix-blend-screen" />

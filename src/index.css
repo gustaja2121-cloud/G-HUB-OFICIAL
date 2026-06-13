@@ -1,11 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
+/* Theme variables */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-
   --color-bg: #0A0A0A;
   --color-surface: #141414;
   --color-surface-light: #1D1D1D;
@@ -13,76 +13,91 @@
   --color-accent-light: #EF5966;
   --color-border: rgba(255, 255, 255, 0.08);
   --color-text-dim: #8E8E93;
-
   --radius-3xl: 2rem;
   --radius-4xl: 2.5rem;
   --radius-5xl: 3rem;
-
   --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 20px rgba(230, 57, 70, 0.15);
   --shadow-inner-premium: inset 0 4px 12px 0 rgba(0, 0, 0, 0.4);
 }
 
+/* Base styles */
 @layer base {
   body {
     @apply bg-bg text-white font-sans antialiased selection:bg-accent selection:text-white;
+    font-family: var(--font-sans);
   }
-  
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight leading-none;
+    font-family: var(--font-display);
   }
 }
 
+/* Component utilities */
 @layer components {
   .premium-card {
     @apply bg-surface border border-border rounded-4xl p-8 transition-all duration-300 hover:border-accent/30 hover:shadow-premium relative overflow-hidden;
   }
-
   .premium-blur {
     @apply backdrop-blur-xl bg-surface/80 border border-white/5;
   }
-
   .interactive-button {
     @apply transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
   }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
-  }
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors; }
 }
 
-/* Glassmorphism utility */
+/* Glassmorphism */
 .glass {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Text gradient */
 .gradient-text {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-accent;
 }
 
-.indicator-up {
-  @apply text-green-400 flex items-center gap-0.5 text-[10px] font-bold;
-}
-
-.indicator-down {
-  @apply text-accent flex items-center gap-0.5 text-[10px] font-bold;
-}
+/* Indicators */
+.indicator-up { @apply text-green-400 flex items-center gap-0.5 text-[10px] font-bold; }
+.indicator-down { @apply text-accent flex items-center gap-0.5 text-[10px] font-bold; }
 
 /* Animation helpers */
-.hover-lift {
-  @apply transition-transform duration-300 hover:-translate-y-1;
+.hover-lift { @apply transition-transform duration-300 hover:-translate-y-1; }
+.glow-hover:hover { box-shadow: 0 0 30px rgba(230,57,70,0.2); }
+
+/* Login background */
+.bg-login {
+  background-image: url('/login_background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  filter: brightness(0.85);
 }
 
-.glow-hover:hover {
-  box-shadow: 0 0 30px rgba(230, 57, 70, 0.2);
+/* Red flash animation */
+@keyframes red-flash {
+  0%, 100% { opacity: 0; transform: scaleY(0); }
+  50% { opacity: 0.6; transform: scaleY(1); }
 }
+.red-flash {
+  position: absolute;
+  width: 2px;
+  height: 120px;
+  background: rgba(230,57,70,0.7);
+  top: 0;
+  left: 0;
+  filter: blur(1px);
+  opacity: 0;
+  animation: red-flash 2s infinite;
+  transform-origin: top;
+  z-index: 10;
+}
+.red-flash:nth-child(1) { left: 20%; animation-delay: 0s; }
+.red-flash:nth-child(2) { left: 40%; animation-delay: 0.5s; }
+.red-flash:nth-child(3) { left: 60%; animation-delay: 1s; }
+.red-flash:nth-child(4) { left: 80%; animation-delay: 1.5s; }

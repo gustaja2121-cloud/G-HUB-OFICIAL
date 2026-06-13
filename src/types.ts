@@ -33,6 +33,7 @@ export interface FinanceEntry {
   amount: number;
   description: string;
   date: string;
+  accountId?: string;
 }
 
 export interface UserLevel {
@@ -89,21 +90,3 @@ export interface RankingSimulation {
   };
   createdAt?: any;
 }
-
-export interface WarRoomPostLog {
-  id: string;
-  platform: string;
-  account: string;
-  postedAt: string; // ISO string
-  userId: string;
-  timerDurationMinutes: number; // Novo campo
-}
-
-export interface WarRoomConfig {
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
-  dailyTarget: number;
-  accounts: { id: string; platform: string; handle: string; }[];
-  compName?: string;
-}
-
