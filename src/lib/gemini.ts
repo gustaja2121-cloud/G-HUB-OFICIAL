@@ -3,7 +3,13 @@ import { JarvisChatMessage, JarvisFact } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export const getGeminiApiKey = (): string => {
-  return localStorage.getItem('VITE_GEMINI_API_KEY') || firebaseConfig.apiKey || '';
+  return (
+    localStorage.getItem('VITE_GEMINI_API_KEY') ||
+    process.env.GEMINI_API_KEY ||
+    (import.meta.env.VITE_GEMINI_API_KEY as string) ||
+    firebaseConfig.apiKey ||
+    ''
+  );
 };
 
 export const saveGeminiApiKey = (key: string): void => {
