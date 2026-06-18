@@ -1,8 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
 import { JarvisChatMessage, JarvisFact } from '../types';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 export const getGeminiApiKey = (): string => {
-  return localStorage.getItem('VITE_GEMINI_API_KEY') || '';
+  return localStorage.getItem('VITE_GEMINI_API_KEY') || firebaseConfig.apiKey || '';
 };
 
 export const saveGeminiApiKey = (key: string): void => {
