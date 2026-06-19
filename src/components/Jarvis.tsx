@@ -51,9 +51,6 @@ export default function Jarvis() {
   useEffect(() => {
     const savedKey = getGeminiApiKey();
     setApiKey(savedKey);
-    if (!savedKey) {
-      setShowSettings(true);
-    }
 
     const loadData = async () => {
       const loadedMessages = await storage.getJarvasMessages();
@@ -334,10 +331,6 @@ export default function Jarvis() {
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
-    if (!apiKey) {
-      setShowSettings(true);
-      return;
-    }
 
     // Cancel speech synthesis if user speaks/sends text
     if (window.speechSynthesis) {
@@ -452,9 +445,19 @@ export default function Jarvis() {
       {/* 3D Orb/Particle Canvas Column */}
       <div className="flex-1 flex flex-col items-center justify-center bg-surface/20 border border-white/5 rounded-[3.5rem] p-8 relative overflow-hidden min-h-[400px]">
         {/* Hologram details */}
-        <div className="absolute top-8 left-8 flex items-center gap-3">
-          <div className="w-3 h-3 bg-accent rounded-full animate-pulse shadow-glow" />
-          <span className="text-[10px] font-black text-text-dim uppercase tracking-[0.4em]">Núcleo JARVAS v3.0</span>
+        {/* Hologram details */}
+        <div className="absolute top-8 left-8 flex flex-col gap-1.5 md:flex-row md:items-center md:gap-3 z-20">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-accent rounded-full animate-pulse shadow-glow" />
+            <span className="text-[10px] font-black text-text-dim uppercase tracking-[0.4em]">Núcleo JARVAS v3.0</span>
+          </div>
+          <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
+            apiKey && !apiKey.startsWith('AIzaSyA5hctqoPBj')
+              ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+          }`}>
+            {apiKey && !apiKey.startsWith('AIzaSyA5hctqoPBj') ? 'Gemini AI Conectado' : 'Modo Local'}
+          </span>
         </div>
 
         <button 
