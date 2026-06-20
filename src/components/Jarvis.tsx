@@ -294,26 +294,51 @@ export default function Jarvis() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Find pt-BR voice
+    // Find pt-BR voice strictly first to avoid European Portuguese (Portugal)
     const voices = window.speechSynthesis.getVoices();
-    const ptBrVoices = voices.filter(v => v.lang.startsWith('pt'));
+    let ptBrVoices = voices.filter(v => 
+      v.lang.toLowerCase() === 'pt-br' || 
+      v.lang.toLowerCase().replace('_', '-') === 'pt-br'
+    );
+
+    // Fallback to any Portuguese voice if no strict pt-BR is found
+    if (ptBrVoices.length === 0) {
+      ptBrVoices = voices.filter(v => v.lang.toLowerCase().startsWith('pt'));
+    }
     
     // Look for masculine Google / Microsoft / system voices
     let maleVoice = ptBrVoices.find(v => 
       v.name.toLowerCase().includes('daniel') || 
-      (v.name.toLowerCase().includes('google') && !v.name.toLowerCase().includes('female') && !v.name.toLowerCase().includes('maria') && !v.name.toLowerCase().includes('leticia'))
+      v.name.toLowerCase().includes('microsoft daniel') ||
+      v.name.toLowerCase().includes('google') ||
+      v.name.toLowerCase().includes('male') ||
+      v.name.toLowerCase().includes('homem') ||
+      v.name.toLowerCase().includes('masculino')
     );
 
+    // Do NOT choose female named voices if we want a male voice
+    if (maleVoice && (
+      maleVoice.name.toLowerCase().includes('female') || 
+      maleVoice.name.toLowerCase().includes('maria') || 
+      maleVoice.name.toLowerCase().includes('leticia') || 
+      maleVoice.name.toLowerCase().includes('francisca') || 
+      maleVoice.name.toLowerCase().includes('helena') ||
+      maleVoice.name.toLowerCase().includes('luciana')
+    )) {
+      maleVoice = undefined;
+    }
+
     if (!maleVoice && ptBrVoices.length > 0) {
-      maleVoice = ptBrVoices[0]; // Fallback to first PT voice
+      maleVoice = ptBrVoices[0]; // Fallback to first available Brazilian Portuguese voice
     }
 
     if (maleVoice) {
       utterance.voice = maleVoice;
     }
 
-    utterance.pitch = 0.95; // Lower pitch slightly for masculine depth
-    utterance.rate = 1.05;  // Slightly faster for AI intelligence vibe
+    // Keep normal rate and pitch to prevent robotic distortion
+    utterance.pitch = 1.0;
+    utterance.rate = 1.0;
 
     utterance.onend = () => {
       isSpeakingRef.current = false;

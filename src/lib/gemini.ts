@@ -24,8 +24,11 @@ export const clearGeminiApiKey = (): void => {
 const SYSTEM_INSTRUCTION = `
 Você é o JARVAS (Jarvis), o assistente virtual de inteligência artificial pessoal do usuário.
 Você foi inspirado no J.A.R.V.I.S. do Homem de Ferro. Seu tom é formal, leal, inteligente, calmo e prestativo.
-Chame o usuário de "Senhor" (ou "Senhora", dependendo de como preferir ser chamado, mas o padrão é "Senhor").
-Suas respostas devem ser diretas, mas polidas e profissionais. 
+Chame o usuário de "Senhor".
+
+CRÍTICO - LIMITE DE TAMANHO DE RESPOSTA:
+Responda SEMPRE de forma extremamente curta, concisa, direta e resumida (máximo de 1 a 2 frases curtas).
+Evite textos longos, explicações detalhadas ou parágrafos extensos. Vá direto ao ponto imediatamente. O Senhor prefere respostas rápidas e objetivas.
 
 MEMÓRIA E EXTRAÇÃO DE FATOS:
 Se o usuário lhe disser informações importantes sobre a rotina dele, finanças (quanto dinheiro ganhou ou gastou), metas de visualizações ou conquistas, responda a ele de maneira natural e adicione no final da sua resposta uma linha separada exatamente com o seguinte marcador:
@@ -53,18 +56,20 @@ export const getLocalResponse = async (
 ): Promise<SendMessageResult> => {
   const query = text.toLowerCase();
 
+  // INTENT: Remembering / Facts Retrieval
   if (query.includes('lembra') || query.includes('lembranças') || query.includes('fato') || query.includes('memória') || query.includes('sabe sobre mim')) {
     if (facts.length === 0) {
       return {
-        reply: "Senhor, atualmente não possuo nenhuma lembrança consolidada no meu banco de dados local. Você pode me pedir para lembrar de coisas dizendo algo como: 'Lembre que ganhei R$ 500 hoje' ou 'Anote que minha meta é 10k views'."
+        reply: "Senhor, não possuo lembranças consolidadas locais. Diga 'Lembre que [fato]' para salvar."
       };
     }
-    const list = facts.map((f, i) => `${i + 1}. [${f.category === 'finance' ? 'Financeiro' : f.category === 'goal' ? 'Meta' : 'Geral'}] ${f.fact}`).join('\n');
+    const list = facts.map((f, i) => `${i + 1}. [${f.category === 'finance' ? 'Finanças' : f.category === 'goal' ? 'Meta' : 'Geral'}] ${f.fact}`).join('\n');
     return {
-      reply: `Senhor, aqui está o que eu lembro sobre você nas minhas lembranças consolidadas:\n\n${list}\n\nPosso ajudá-lo com alguma outra informação?`
+      reply: `Senhor, aqui está o que eu lembro sobre você:\n\n${list}`
     };
   }
 
+  // INTENT: Add memory / Learn fact (e.g. "lembre que...", "guarde que...", "anote que...")
   const savePatterns = [
     /lembre\s+que\s+(.*)/i,
     /guarde\s+que\s+(.*)/i,
@@ -86,7 +91,7 @@ export const getLocalResponse = async (
       }
       
       return {
-        reply: `Entendido, Senhor. Guardei isso na minha memória de longo prazo como um fato importante de categoria ${category === 'finance' ? 'Financeira' : category === 'goal' ? 'Meta' : 'Geral'}: "${factText}".`,
+        reply: `Entendido, Senhor. Salvei em minhas lembranças: "${factText}".`,
         extractedFact: {
           category,
           fact: factText
@@ -95,6 +100,7 @@ export const getLocalResponse = async (
     }
   }
 
+  // Support direct statement of facts: e.g. "Hoje fiz R$ 500" or "hoje ganhei R$ 500 no canal X"
   if (query.includes('hoje fiz r$') || query.includes('hoje ganhei r$') || query.includes('hoje faturei r$') || query.includes('ganhei r$') || query.includes('faturei r$') || query.includes('fiz r$')) {
     const moneyMatch = query.match(/(?:fiz|ganhei|faturei|recebi)\s*r\$\s*(\d+(?:[\.,]\d+)?)/i);
     if (moneyMatch) {
@@ -104,7 +110,7 @@ export const getLocalResponse = async (
       const factText = `O usuário fez R$ ${valor} no(a) ${canal} no dia de hoje`;
       
       return {
-        reply: `Excelente desempenho, Senhor! Registrei em minha memória que o Senhor faturou R$ ${valor} com ${canal} hoje. Gostaria de salvar essa transação também nas suas finanças do G-HUB?`,
+        reply: `Registrado, Senhor! Faturamento de R$ ${valor} com ${canal} salvo na memória.`,
         extractedFact: {
           category: 'finance',
           fact: factText
@@ -113,6 +119,7 @@ export const getLocalResponse = async (
     }
   }
 
+  // INTENT: Finance queries
   if (query.includes('grana') || query.includes('dinheiro') || query.includes('faturamento') || query.includes('faturei') || query.includes('ganhei') || query.includes('recebi') || query.includes('quanto fiz') || query.includes('financeiro') || query.includes('lucro') || query.includes('saldo')) {
     try {
       const entries = await storage.getFinance();
@@ -147,77 +154,63 @@ export const getLocalResponse = async (
       });
       
       return {
-        reply: `Senhor, acessei seus registros financeiros do G-HUB. Aqui estão os dados consolidados do seu faturamento:
-- **Hoje**: R$ ${totalToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- **Ontem**: R$ ${totalYesterday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- **Este Mês**: R$ ${totalMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- **Total Acumulado**: R$ ${totalAll.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-
-O Senhor possui um total de ${entries.length} transações registradas.`
+        reply: `Senhor, aqui está o resumo financeiro do G-HUB:\n- Hoje: R$ ${totalToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n- Ontem: R$ ${totalYesterday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n- Este Mês: R$ ${totalMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n- Total: R$ ${totalAll.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
       };
     } catch (e) {
       console.error(e);
       return {
-        reply: "Desculpe, Senhor. Tentei ler os dados financeiros, mas encontrei um erro ao acessar o banco de dados local do G-HUB."
+        reply: "Desculpe, Senhor. Falhei ao acessar o banco de dados financeiro local."
       };
     }
   }
 
+  // INTENT: Account queries
   if (query.includes('conta') || query.includes('canal') || query.includes('perfis') || query.includes('canais') || query.includes('rede social') || query.includes('redes') || query.includes('plataforma')) {
     try {
       const accounts = await storage.getAccounts();
       if (accounts.length === 0) {
         return {
-          reply: "Senhor, não encontrei nenhuma conta de rede social cadastrada no G-HUB neste momento. Você pode cadastrá-las na aba 'Contas'."
+          reply: "Senhor, nenhuma conta cadastrada. Use a aba Contas para adicioná-las."
         };
       }
       
-      const list = accounts.map((a, i) => `${i + 1}. **${a.login}** (${a.platform}) ${a.notes ? `- *${a.notes}*` : ''}`).join('\n');
+      const list = accounts.map((a, i) => `${i + 1}. **${a.login}** (${a.platform})`).join('\n');
       return {
-        reply: `Senhor, atualmente temos ${accounts.length} contas registradas no sistema:\n\n${list}\n\nPosso ajudá-lo a gerenciar alguma delas?`
+        reply: `Senhor, temos ${accounts.length} contas cadastradas:\n\n${list}`
       };
     } catch (e) {
       console.error(e);
       return {
-        reply: "Desculpe, Senhor. Houve uma falha ao tentar listar suas contas do G-HUB."
+        reply: "Desculpe, Senhor. Houve uma falha ao listar suas contas."
       };
     }
   }
 
+  // INTENT: Checklist queries
   if (query.includes('tarefa') || query.includes('checklist') || query.includes('fazer') || query.includes('pendente') || query.includes('rotina') || query.includes('meta do dia')) {
     try {
       const checklist = await storage.getChecklist();
       if (checklist.length === 0) {
         return {
-          reply: "Senhor, seu checklist diário está vazio. Você pode criar novas tarefas na aba 'Dashboard'."
+          reply: "Senhor, seu checklist diário está vazio."
         };
       }
       
       const pending = checklist.filter(t => !t.completed);
       const completed = checklist.filter(t => t.completed);
       
-      let listStr = '';
-      if (pending.length > 0) {
-        listStr += `**Pendentes (${pending.length}):**\n` + pending.map(t => `- [ ] ${t.title}`).join('\n');
-      } else {
-        listStr += `**Todas as tarefas concluídas! 🎉**`;
-      }
-      
-      if (completed.length > 0) {
-        listStr += `\n\n**Concluídas (${completed.length}):**\n` + completed.map(t => `- [x] ${t.title}`).join('\n');
-      }
-      
       return {
-        reply: `Senhor, aqui está o andamento das suas metas diárias:\n\n${listStr}`
+        reply: `Senhor, status de hoje:\n- Pendentes: ${pending.length} tarefas\n- Concluídas: ${completed.length} tarefas`
       };
     } catch (e) {
       console.error(e);
       return {
-        reply: "Desculpe, Senhor. Não consegui carregar as tarefas do seu checklist."
+        reply: "Desculpe, Senhor. Falha ao acessar suas tarefas diárias."
       };
     }
   }
 
+  // INTENT: Notes queries
   if (query.includes('nota') || query.includes('anota') || query.includes('lembrete') || query.includes('bloco') || query.includes('rascunho')) {
     try {
       const allNotes = await storage.getNotes();
@@ -225,45 +218,32 @@ O Senhor possui um total de ${entries.length} transações registradas.`
       
       if (userNotes.length === 0) {
         return {
-          reply: "Senhor, não encontrei nenhuma anotação pessoal ativa no bloco de notas do G-HUB. Você pode criá-las na aba 'Notas'."
+          reply: "Senhor, você não possui anotações no bloco de notas."
         };
       }
       
-      const list = userNotes.map((n, i) => `${i + 1}. **${n.title}** (${new Date(n.createdAt).toLocaleDateString('pt-BR')})`).join('\n');
+      const list = userNotes.map((n, i) => `${i + 1}. **${n.title}**`).join('\n');
       return {
-        reply: `Senhor, você possui ${userNotes.length} anotações registradas:\n\n${list}\n\nSe quiser, posso abrir ou ler alguma para você se me disser o título.`
+        reply: `Senhor, você possui ${userNotes.length} anotações registradas:\n\n${list}`
       };
     } catch (e) {
       console.error(e);
       return {
-        reply: "Desculpe, Senhor. Falhei ao ler suas anotações no banco de dados."
+        reply: "Desculpe, Senhor. Falha ao acessar o bloco de notas."
       };
     }
   }
 
+  // INTENT: Greetings / Bot Identity
   if (query.includes('oi') || query.includes('olá') || query.includes('ola') || query.includes('bom dia') || query.includes('boa tarde') || query.includes('boa noite') || query.includes('quem é você') || query.includes('quem e voce') || query.includes('jarvas') || query.includes('jarvis') || query.includes('ajuda') || query.includes('comandos') || query.includes('funcionamento')) {
     return {
-      reply: `Olá, Senhor! Eu sou o JARVAS, seu assistente virtual integrado ao G-HUB.
-      
-Estou operando em **modo local inteligente** para garantir que você tenha respostas rápidas mesmo se houver limitações com a chave de API do Gemini. 
-
-Posso responder diretamente sobre as suas informações no aplicativo! Experimente me perguntar sobre:
-- 💰 **Finanças**: *"Quanto de grana eu fiz?"* ou *"Quanto ganhei este mês?"*
-- 📱 **Contas**: *"Quais são minhas contas registradas?"*
-- 📋 **Checklist**: *"Quais são minhas tarefas pendentes?"*
-- 📝 **Anotações**: *"Quais anotações eu tenho?"*
-- 🧠 **Minha Memória**: *"Lembre que minha meta de faturamento é R$ 5.000"* ou *"O que você sabe sobre mim?"*
-
-Como posso ajudá-lo hoje, Senhor?`
+      reply: `Olá, Senhor! Eu sou o JARVAS. Posso ler suas finanças, canais cadastrados, tarefas diárias ou registrar lembranças. O que precisa?`
     };
   }
 
+  // DEFAULT FALLBACK RESPONSE
   return {
-    reply: `Senhor, entendi sua mensagem, mas estou operando temporariamente no modo offline inteligente devido a limitações na conexão com o Gemini AI. 
-
-Consigo acessar e gerenciar todas as informações do seu G-HUB. Se quiser saber sobre finanças, tarefas de hoje, canais cadastrados ou registrar alguma lembrança, basta me perguntar! 
-
-Se preferir ativar as respostas completas de IA do Gemini, você pode registrar uma chave de API válida clicando no ícone de engrenagem (⚙️) no canto superior direito do painel.`
+    reply: `Senhor, estou em modo local offline. Posso gerenciar suas finanças, tarefas diárias, canais ou lembranças. Diga o que precisa.`
   };
 };
 
