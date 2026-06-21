@@ -136,11 +136,11 @@ export default function Jarvis() {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    // Particle Swarm Configuration
+    // Particle Swarm Configuration - Upgraded to Concentric Gyroscopic Rings (Stark HUD)
     const count = 20000;
     const geom = new THREE.BoxGeometry(0.015, 0.015, 0.015);
     const mat = new THREE.MeshBasicMaterial({
-      color: 0x3b82f6,
+      color: 0x00d2ff, // Neon Cyan
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending
@@ -149,8 +149,9 @@ export default function Jarvis() {
     const mesh = new THREE.InstancedMesh(geom, mat, count);
     scene.add(mesh);
 
-    // Distribute particles in a high-tech sphere swarm
+    // Distribute particles in gyroscopic rings and a central reactor core
     const particles: {
+      type: 'core' | 'ring1' | 'ring2' | 'ring3' | 'radar';
       x: number;
       y: number;
       z: number;
@@ -160,19 +161,61 @@ export default function Jarvis() {
     }[] = [];
 
     for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos((Math.random() * 2) - 1);
-      const radius = 1.1 + Math.random() * 0.45;
+      let type: 'core' | 'ring1' | 'ring2' | 'ring3' | 'radar' = 'core';
+      let x = 0, y = 0, z = 0;
+      const radiusVal = 1.0 + Math.random() * 0.4;
 
-      const x = radius * Math.sin(phi) * Math.cos(theta);
-      const y = radius * Math.sin(phi) * Math.sin(theta);
-      const z = radius * Math.cos(phi);
+      if (i < 6000) {
+        // Reactor Core Sphere
+        type = 'core';
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const r = 0.4 + Math.random() * 0.15;
+        x = r * Math.sin(phi) * Math.cos(theta);
+        y = r * Math.sin(phi) * Math.sin(theta);
+        z = r * Math.cos(phi);
+      } else if (i < 11000) {
+        // Ring 1 (Horizontal Orbit)
+        type = 'ring1';
+        const theta = Math.random() * Math.PI * 2;
+        const r = 1.25 + Math.random() * 0.05;
+        x = r * Math.cos(theta);
+        y = (Math.random() - 0.5) * 0.015;
+        z = r * Math.sin(theta);
+      } else if (i < 15500) {
+        // Ring 2 (Vertical Pitch Orbit)
+        type = 'ring2';
+        const theta = Math.random() * Math.PI * 2;
+        const r = 1.35 + Math.random() * 0.05;
+        x = r * Math.cos(theta);
+        y = r * Math.sin(theta);
+        z = (Math.random() - 0.5) * 0.015;
+      } else if (i < 18500) {
+        // Ring 3 (Diagonal Gyro Orbit)
+        type = 'ring3';
+        const theta = Math.random() * Math.PI * 2;
+        const r = 1.45 + Math.random() * 0.05;
+        const cos = Math.cos(theta);
+        const sin = Math.sin(theta);
+        x = r * cos;
+        y = r * sin * 0.707;
+        z = r * sin * 0.707;
+      } else {
+        // Radar Sweep Planar Dots
+        type = 'radar';
+        const theta = Math.random() * Math.PI * 2;
+        const r = 0.2 + Math.random() * 1.2;
+        x = r * Math.cos(theta);
+        y = r * Math.sin(theta);
+        z = (Math.random() - 0.5) * 0.01;
+      }
 
       particles.push({
+        type,
         x, y, z,
-        speed: 0.6 + Math.random() * 1.2,
+        speed: 0.5 + Math.random() * 1.5,
         phase: Math.random() * Math.PI * 2,
-        radius
+        radius: radiusVal
       });
     }
 
@@ -185,62 +228,107 @@ export default function Jarvis() {
       const time = clock.getElapsedTime();
       const currentState = stateRef.current;
 
-      // Swarm colors based on Jarvis state
-      let colorHex = 0x3b82f6; // Blue (Idle)
+      // Holographic Stark colors based on Jarvis state
+      let colorHex = 0x00d2ff; // Cyan (Idle)
       let speedMult = 1.0;
 
       if (currentState === 'listening') {
-        colorHex = 0x10b981; // Green
-        speedMult = 2.0;
+        colorHex = 0x00ffaa; // Neon Green-Cyan
+        speedMult = 1.8;
       } else if (currentState === 'thinking') {
-        colorHex = 0xf59e0b; // Gold
-        speedMult = 3.5;
+        colorHex = 0xffcc00; // Stark Gold
+        speedMult = 3.0;
       } else if (currentState === 'speaking') {
-        colorHex = 0xe63946; // Crimson Red
-        speedMult = 2.2;
+        colorHex = 0xff2a4b; // Stark Red
+        speedMult = 2.0;
       }
 
       for (let i = 0; i < count; i++) {
         const p = particles[i];
-        const angle = p.phase + time * p.speed * speedMult;
         let x = p.x;
         let y = p.y;
         let z = p.z;
 
-        if (currentState === 'thinking') {
-          // Vortex spiral pulling in
-          const radius = p.radius * (0.4 + 0.6 * Math.sin(time * 3 + p.phase));
-          x = radius * Math.sin(angle);
-          y = (p.radius - 1.35) * 1.5 + Math.sin(angle * 1.5) * 0.3;
-          z = radius * Math.cos(angle);
-        } else if (currentState === 'speaking') {
-          // Expanding soundwave impulses
-          const factor = 1.0 + Math.sin(time * 15 + p.phase * 3) * 0.22;
-          x = p.x * factor;
-          y = p.y * factor;
-          z = p.z * factor;
-        } else if (currentState === 'listening') {
-          // Continuous wave oscillation
-          const wave = Math.sin(time * 10 + p.x * 2.5) * 0.12;
-          x = p.x * (1 + wave);
-          y = p.y * (1 + wave);
-          z = p.z * (1 + wave);
-        } else {
-          // Idle breathing
-          const breathe = Math.sin(time * 1.8 + p.phase) * 0.04;
-          x = p.x * (1 + breathe);
-          y = p.y * (1 + breathe);
-          z = p.z * (1 + breathe);
+        if (p.type === 'core') {
+          // Pulse the core
+          const factor = 1.0 + Math.sin(time * 3 + p.phase) * 0.08;
+          if (currentState === 'speaking') {
+            const pulse = 1.0 + Math.sin(time * 18 + p.phase) * 0.25;
+            x = p.x * factor * pulse;
+            y = p.y * factor * pulse;
+            z = p.z * factor * pulse;
+          } else if (currentState === 'listening') {
+            const sonar = 1.0 + Math.sin(time * 10 + p.phase) * 0.15;
+            x = p.x * factor * sonar;
+            y = p.y * factor * sonar;
+            z = p.z * factor * sonar;
+          } else {
+            x = p.x * factor;
+            y = p.y * factor;
+            z = p.z * factor;
+          }
+        } else if (p.type === 'ring1') {
+          // Ring 1: Spin around Y-axis
+          const spinAngle = p.phase + time * 0.25 * speedMult;
+          const r = Math.sqrt(p.x * p.x + p.z * p.z);
+          let wave = 0;
+          if (currentState === 'speaking') {
+            wave = Math.sin(spinAngle * 8 + time * 12) * 0.12;
+          } else if (currentState === 'listening') {
+            wave = Math.sin(spinAngle * 4 + time * 6) * 0.08;
+          }
+          x = (r + wave) * Math.cos(spinAngle);
+          y = p.y + wave * 0.25;
+          z = (r + wave) * Math.sin(spinAngle);
+        } else if (p.type === 'ring2') {
+          // Ring 2: Spin around Z-axis
+          const spinAngle = p.phase - time * 0.18 * speedMult; // opposite rotation
+          const r = Math.sqrt(p.x * p.x + p.y * p.y);
+          let wave = 0;
+          if (currentState === 'speaking') {
+            wave = Math.cos(spinAngle * 8 + time * 12) * 0.12;
+          }
+          x = (r + wave) * Math.cos(spinAngle);
+          y = (r + wave) * Math.sin(spinAngle);
+          z = p.z + wave * 0.25;
+        } else if (p.type === 'ring3') {
+          // Ring 3: Spin diagonally
+          const spinAngle = p.phase + time * 0.2 * speedMult;
+          const r = Math.sqrt(p.x * p.x + (p.y * p.y + p.z * p.z));
+          let wave = 0;
+          if (currentState === 'speaking') {
+            wave = Math.sin(spinAngle * 6 + time * 12) * 0.1;
+          }
+          const cos = Math.cos(spinAngle);
+          const sin = Math.sin(spinAngle);
+          x = (r + wave) * cos;
+          y = (r + wave) * sin * 0.707;
+          z = (r + wave) * sin * 0.707;
+        } else if (p.type === 'radar') {
+          // Radar scan line sweeping through
+          const r = Math.sqrt(p.x * p.x + p.y * p.y);
+          const sweepAngle = (time * 0.8 * speedMult) % (Math.PI * 2);
+          const diff = Math.abs((Math.atan2(p.y, p.x) - sweepAngle + Math.PI * 2) % (Math.PI * 2));
+          const glow = Math.max(0, 1 - diff * 2.5);
+          x = p.x;
+          y = p.y;
+          z = p.z + glow * 0.18;
         }
 
         dummy.position.set(x, y, z);
 
-        // Random sizing when speaking
+        // Resize and scaling based on state
         let scale = 1.0;
-        if (currentState === 'speaking') {
-          scale = 0.9 + Math.random() * 0.7;
-        } else if (currentState === 'thinking') {
-          scale = 0.7;
+        if (p.type === 'core') {
+          if (currentState === 'thinking') {
+            scale = 0.7 + Math.sin(time * 8 + p.phase) * 0.1;
+          } else if (currentState === 'speaking') {
+            scale = 0.9 + Math.random() * 0.5;
+          }
+        } else {
+          if (currentState === 'thinking') {
+            scale = 0.8;
+          }
         }
         dummy.scale.set(scale, scale, scale);
 
@@ -466,17 +554,25 @@ export default function Jarvis() {
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-12rem)]">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes scan-line-laser {
+          0% { top: 0%; opacity: 0; }
+          10% { opacity: 0.75; }
+          90% { opacity: 0.75; }
+          100% { top: 100%; opacity: 0; }
+        }
+      ` }} />
       
-      {/* 3D Orb/Particle Canvas Column */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-surface/20 border border-white/5 rounded-[3.5rem] p-8 relative overflow-hidden min-h-[400px]">
-        {/* Hologram details */}
+      {/* Upgraded Stark Industries Hologram Console Panel */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-black/45 backdrop-blur-xl border border-accent/15 rounded-[3.5rem] p-8 relative overflow-hidden min-h-[400px] shadow-[0_0_35px_rgba(230,57,70,0.03)]">
+        
         {/* Hologram details */}
         <div className="absolute top-8 left-8 flex flex-col gap-1.5 md:flex-row md:items-center md:gap-3 z-20">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-accent rounded-full animate-pulse shadow-glow" />
-            <span className="text-[10px] font-black text-text-dim uppercase tracking-[0.4em]">Núcleo JARVAS v3.0</span>
+            <span className="text-[10px] font-mono font-black text-text-dim uppercase tracking-[0.4em]">Núcleo JARVAS v3.0</span>
           </div>
-          <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
+          <span className={`text-[8px] font-mono font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
             apiKey && !apiKey.startsWith('AIzaSyA5hctqoPBj')
               ? 'bg-green-500/10 border-green-500/20 text-green-400' 
               : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
@@ -493,9 +589,49 @@ export default function Jarvis() {
           <Settings size={20} />
         </button>
 
-        {/* 3D Canvas element */}
-        <div className="w-[300px] h-[300px] md:w-[420px] md:h-[420px] relative z-10 flex items-center justify-center">
-          <canvas ref={canvasRef} className="w-full h-full cursor-pointer" />
+        {/* 3D Canvas element with Iron Man HUD Overlay */}
+        <div className="w-[300px] h-[300px] md:w-[420px] md:h-[420px] relative z-10 flex items-center justify-center select-none">
+          {/* Glowing background halo */}
+          <div className="absolute inset-8 rounded-full bg-accent/5 blur-3xl pointer-events-none transition-all duration-700 animate-pulse" />
+
+          {/* Concentric rotating HUD lines */}
+          <div className="absolute inset-0 rounded-full border border-accent/15 animate-[spin_35s_linear_infinite] pointer-events-none scale-100" />
+          <div className="absolute inset-2 rounded-full border border-dashed border-accent/10 animate-[spin_50s_linear_infinite_reverse] pointer-events-none scale-95" />
+          <div className="absolute inset-[30px] rounded-full border border-accent/5 pointer-events-none scale-85" />
+          <div className="absolute inset-[60px] rounded-full border-2 border-double border-accent/15 animate-[spin_18s_linear_infinite] pointer-events-none scale-70" />
+          <div className="absolute inset-[100px] rounded-full border border-dashed border-accent/10 animate-[spin_25s_linear_infinite_reverse] pointer-events-none scale-50" />
+          
+          {/* Tech ticks / corners */}
+          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-accent/25 pointer-events-none rounded-tl-3xl" />
+          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-accent/25 pointer-events-none rounded-tr-3xl" />
+          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-accent/25 pointer-events-none rounded-bl-3xl" />
+          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-accent/25 pointer-events-none rounded-br-3xl" />
+
+          {/* Compass grid crosshair */}
+          <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-accent/10 pointer-events-none" />
+          <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-accent/10 pointer-events-none" />
+          
+          {/* Target lock ticks */}
+          <div className="absolute w-14 h-14 border border-accent/40 rounded-full pointer-events-none flex items-center justify-center animate-pulse">
+            <div className="w-2 h-2 bg-accent rounded-full animate-ping" />
+          </div>
+
+          {/* Scanning line laser sweep */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent/35 shadow-[0_0_12px_rgba(230,57,70,0.6)] animate-[scan-line-laser_4s_linear_infinite] pointer-events-none" />
+
+          {/* Diagnostic status texts */}
+          <div className="absolute bottom-4 left-6 text-[8px] font-mono font-black text-accent/50 uppercase tracking-[0.2em] pointer-events-none text-left leading-relaxed">
+            SYS_LOCK: ONLINE<br />
+            REACTOR_CORE: ACTIVE<br />
+            STARK_COGNITIVE_V3
+          </div>
+          <div className="absolute bottom-4 right-6 text-[8px] font-mono font-black text-accent/50 uppercase tracking-[0.2em] pointer-events-none text-right leading-relaxed">
+            FREQ: {state === 'speaking' ? '824.2 MHZ' : state === 'listening' ? '124.9 MHZ' : '0.00 MHZ'}<br />
+            CORE_TEMP: 38.6 C<br />
+            TELEM: OK
+          </div>
+
+          <canvas ref={canvasRef} className="w-full h-full cursor-pointer z-10 relative" />
         </div>
 
         {/* Visual feedback subtitle */}
