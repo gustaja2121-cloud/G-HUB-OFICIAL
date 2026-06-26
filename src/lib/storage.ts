@@ -22,8 +22,6 @@ import {
   VideoPostRecord,
   Account,
   RankingSimulation,
-  JarvisChatMessage,
-  JarvisFact
 } from '../types';
 
 const COLLECTIONS = {
@@ -423,59 +421,6 @@ export const storage = {
     }
   },
 
-  // WAR ROOM functions removed
-  
-  // JARVAS METHODS
-  getJarvasMessages: async (): Promise<JarvisChatMessage[]> => {
-    try {
-      const notes = await storage.getNotes();
-      const chatNote = notes.find(n => n.title === '[JARVAS_CHAT_LOG]');
-      if (chatNote) {
-        return JSON.parse(chatNote.content || '[]') as JarvisChatMessage[];
-      }
-      return [];
-    } catch (e) {
-      console.error('Error loading Jarvas chat:', e);
-      return [];
-    }
-  },
-  saveJarvasMessages: async (messages: JarvisChatMessage[]): Promise<void> => {
-    try {
-      const noteData: Note = {
-        id: 'jarvas_chat_log',
-        title: '[JARVAS_CHAT_LOG]',
-        content: JSON.stringify(messages),
-        createdAt: new Date().toISOString()
-      };
-      await storage.saveNote(noteData);
-    } catch (e) {
-      console.error('Error saving Jarvas chat:', e);
-    }
-  },
-  getJarvasFacts: async (): Promise<JarvisFact[]> => {
-    try {
-      const notes = await storage.getNotes();
-      const factsNote = notes.find(n => n.title === '[JARVAS_MEMORY_FACTS]');
-      if (factsNote) {
-        return JSON.parse(factsNote.content || '[]') as JarvisFact[];
-      }
-      return [];
-    } catch (e) {
-      console.error('Error loading Jarvas facts:', e);
-      return [];
-    }
-  },
-  saveJarvasFacts: async (facts: JarvisFact[]): Promise<void> => {
-    try {
-      const noteData: Note = {
-        id: 'jarvas_memory_facts',
-        title: '[JARVAS_MEMORY_FACTS]',
-        content: JSON.stringify(facts),
-        createdAt: new Date().toISOString()
-      };
-      await storage.saveNote(noteData);
-    } catch (e) {
-      console.error('Error saving Jarvas facts:', e);
-    }
-  }
+  // (fim do storage)
 };
+

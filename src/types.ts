@@ -34,6 +34,7 @@ export interface FinanceEntry {
   description: string;
   date: string;
   accountId?: string;
+  cuts?: number; // quantidade de cortes feitos nessa entrada
 }
 
 export interface UserLevel {
@@ -91,17 +92,3 @@ export interface RankingSimulation {
   createdAt?: any;
 }
 
-export interface JarvisChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  timestamp: string; // ISO String
-}
-
-export interface JarvisFact {
-  id: string;
-  userId: string;
-  fact: string;
-  category?: 'finance' | 'goal' | 'general';
-  createdAt: string; // ISO String
-}

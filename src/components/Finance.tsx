@@ -11,28 +11,26 @@ import {
   Calendar as CalendarIcon,
   X,
   CreditCard,
-  Target,
   Wallet,
   ArrowUpRight,
-  Filter,
   Sparkles,
   Loader2,
-  ArrowDownRight,
   Activity,
-  ChevronDown,
-  Lock
+  Scissors,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, isSameMonth, subDays, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '../lib/utils';
 import { 
-  AreaChart, 
-  Area, 
+  ComposedChart,
+  Bar,
+  Line,
   XAxis, 
   YAxis, 
   ResponsiveContainer, 
   Tooltip,
-  CartesianGrid
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
 } from 'recharts';
 
 export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void }) {
@@ -43,6 +41,7 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [cuts, setCuts] = useState('');
 
   const loadData = async () => {
     try {
@@ -68,12 +67,14 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
       amount: parseFloat(amount),
       description: description || 'Capital Inflow',
       date,
+      cuts: cuts && parseInt(cuts) > 0 ? parseInt(cuts) : undefined,
     };
     await storage.saveFinance(entry);
     await loadData();
     setIsModalOpen(false);
     setAmount('');
     setDescription('');
+    setCuts('');
     showToast('Depósito sincronizado com sucesso!', 'success');
   };
 
@@ -106,20 +107,27 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
   const totalToday = entries.filter(e => e.date === todayStr)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
-  // Daily Evolution Chart (Last 14 days)
+  // Total cuts overall
+  const totalCuts = entries.reduce((acc, curr) => acc + (curr.cuts || 0), 0);
+
+  // Daily Chart Data (Last 14 days)
   const chartData = Array.from({ length: 14 }).map((_, i) => {
     const d = subDays(new Date(), 13 - i);
     const dayStr = format(d, 'yyyy-MM-dd');
-    const dayTotal = entries
-      .filter(e => e.date === dayStr)
-      .reduce((acc, curr) => acc + curr.amount, 0);
-    
+    const dayEntries = entries.filter(e => e.date === dayStr);
+    const dayTotal = dayEntries.reduce((acc, curr) => acc + curr.amount, 0);
+    const dayCuts = dayEntries.reduce((acc, curr) => acc + (curr.cuts || 0), 0);
     return {
       date: format(d, 'dd/MM'),
       valor: dayTotal,
-      fullDate: dayStr
+      cortes: dayCuts,
+      fullDate: dayStr,
+      hasData: dayTotal > 0,
     };
   });
+
+  // Compute simple moving average for trend line
+  const avg = chartData.reduce((s, d) => s + d.valor, 0) / chartData.length;
 
   const sortedEntries = [...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
@@ -129,6 +137,38 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
     acc[day].push(entry);
     return acc;
   }, {} as Record<string, FinanceEntry[]>);
+
+  // Custom tooltip for chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#0e0e0e] border border-accent/30 rounded-2xl p-5 shadow-2xl shadow-accent/10 min-w-[180px]"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <span className="text-[9px] font-black text-text-dim uppercase tracking-[0.3em]">{d.date}</span>
+          </div>
+          <div className="text-2xl font-black text-white mb-1">
+            R$ {d.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </div>
+          {d.cortes > 0 && (
+            <div className="flex items-center gap-2 mt-2 bg-accent/10 border border-accent/20 rounded-xl px-3 py-1.5">
+              <Scissors size={10} className="text-accent" />
+              <span className="text-[10px] font-black text-accent uppercase tracking-wider">Cortes · {d.cortes}</span>
+            </div>
+          )}
+          {d.valor === 0 && (
+            <div className="text-[9px] font-black text-text-dim/40 uppercase tracking-wider mt-1">Sem entradas</div>
+          )}
+        </motion.div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-12 pb-24 pt-10">
@@ -173,7 +213,7 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
         </div>
       </header>
 
-      {/* High-Impact Asset Cards */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <motion.div
            initial={{ opacity: 0, scale: 0.98 }}
@@ -223,90 +263,142 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-green-500/60 italic flex items-center gap-2">
                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> Registro Diário Online
             </div>
+            {/* Cortes do dia */}
+            {totalCuts > 0 && (
+              <div className="mt-3 flex items-center gap-2 bg-accent/8 border border-accent/15 rounded-xl px-3 py-1.5 w-fit">
+                <Scissors size={11} className="text-accent" />
+                <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">
+                  Cortes · {entries.filter(e => e.date === todayStr).reduce((a, c) => a + (c.cuts || 0), 0) || totalCuts}
+                </span>
+              </div>
+            )}
           </div>
           <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
         </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Performance Architecture */}
+        {/* Chart */}
         <div className="lg:col-span-2 space-y-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="premium-card p-12"
+            className="premium-card p-10"
           >
-            <div className="flex items-center justify-between mb-16">
+            <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-3xl font-black tracking-tighter gradient-text uppercase mb-2">Velocidade Alpha</h2>
+                <h2 className="text-3xl font-black tracking-tighter gradient-text uppercase mb-1">Velocidade Alpha</h2>
                 <p className="text-[10px] font-black text-text-dim tracking-[0.4em] uppercase opacity-40">Trajetória Financeira de 14 Ciclos</p>
               </div>
-              <div className="flex gap-4">
-                 <div className="px-6 py-2.5 bg-white/5 border border-white/5 rounded-full flex items-center gap-3 text-[10px] font-black text-accent uppercase tracking-widest">
-                    <Sparkles size={14} className="animate-pulse" />
-                    Pulso Estratégico
-                 </div>
+              <div className="flex gap-3 items-center">
+                <div className="flex items-center gap-2 text-[9px] font-black text-text-dim/50 uppercase tracking-widest">
+                  <div className="w-3 h-[2px] bg-accent rounded-full" />Entrada
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-black text-text-dim/50 uppercase tracking-widest">
+                  <div className="w-3 h-[2px] bg-blue-400/60 rounded-full border-dashed" />Média
+                </div>
+                <div className="px-5 py-2 bg-white/5 border border-white/5 rounded-full flex items-center gap-2 text-[10px] font-black text-accent uppercase tracking-widest ml-2">
+                  <Sparkles size={12} className="animate-pulse" />
+                  Pulso
+                </div>
               </div>
             </div>
 
-            <div className="h-[380px] w-full -ml-8 -mb-4">
+            <div className="h-[340px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <ComposedChart data={chartData} barGap={4} barCategoryGap="30%">
                   <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E63946" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#E63946" stopOpacity={0}/>
+                    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#E63946" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#E63946" stopOpacity={0.15} />
                     </linearGradient>
+                    <linearGradient id="barGradHot" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ff6b6b" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#E63946" stopOpacity={0.5} />
+                    </linearGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
                   </defs>
-                  <CartesianGrid strokeDasharray="8 8" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#4a4a4a" 
-                    fontSize={11} 
-                    fontWeight={900}
-                    tickLine={false} 
+
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.04)"
+                    vertical={false}
+                  />
+
+                  <XAxis
+                    dataKey="date"
+                    stroke="transparent"
+                    tick={{ fill: '#4a4a4a', fontSize: 10, fontWeight: 900, fontFamily: 'monospace' }}
+                    tickLine={false}
                     axisLine={false}
-                    dy={15}
+                    dy={10}
                   />
-                  <YAxis hide />
-                  <Tooltip 
-                    cursor={{ stroke: '#E63946', strokeWidth: 2, strokeDasharray: '4 4' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-surface/90 backdrop-blur-2xl border border-white/10 p-6 rounded-3xl shadow-premium relative overflow-hidden"
-                          >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-accent shadow-glow" />
-                            <div className="text-[10px] font-black text-text-dim uppercase tracking-[0.2em] mb-3 opacity-60">Registro: {payload[0].payload.date}</div>
-                            <div className="text-3xl font-black text-white leading-none">R$ {payload[0].value?.toLocaleString('pt-BR')}</div>
-                            <div className="text-[9px] font-black text-accent uppercase tracking-[0.3em] mt-2 italic flex items-center gap-2">
-                               <ArrowUpRight size={10} /> Entrada Verificada
-                            </div>
-                          </motion.div>
-                        );
-                      }
-                      return null;
-                    }}
+
+                  <YAxis
+                    stroke="transparent"
+                    tick={{ fill: '#3a3a3a', fontSize: 9, fontWeight: 900, fontFamily: 'monospace' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => v === 0 ? '' : `R$${(v / 1000).toFixed(0)}k`}
+                    width={40}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="valor" 
-                    stroke="#E63946" 
-                    strokeWidth={5}
-                    fillOpacity={1} 
-                    fill="url(#colorValue)" 
-                    animationDuration={2500}
+
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(230,57,70,0.04)', radius: 8 }} />
+
+                  {avg > 0 && (
+                    <ReferenceLine
+                      y={avg}
+                      stroke="rgba(96,165,250,0.35)"
+                      strokeDasharray="6 4"
+                      strokeWidth={1.5}
+                    />
+                  )}
+
+                  <Bar dataKey="valor" radius={[6, 6, 2, 2]} maxBarSize={36}>
+                    {chartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.valor > avg * 1.5 ? 'url(#barGradHot)' : entry.hasData ? 'url(#barGrad)' : 'rgba(255,255,255,0.04)'}
+                        filter={entry.valor > avg * 1.5 ? 'url(#glow)' : undefined}
+                      />
+                    ))}
+                  </Bar>
+
+                  <Line
+                    type="monotone"
+                    dataKey="valor"
+                    stroke="rgba(230,57,70,0.5)"
+                    strokeWidth={1.5}
+                    dot={false}
+                    strokeDasharray="5 5"
                   />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
+            </div>
+
+            {/* Bottom stats strip */}
+            <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-3 gap-4">
+              {[
+                { label: 'Pico 14d', value: `R$ ${Math.max(...chartData.map(d => d.valor)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+                { label: 'Média Diária', value: `R$ ${avg.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+                { label: 'Total Cortes', value: `${totalCuts} cortes` },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <div className="text-[8px] font-black text-text-dim uppercase tracking-[0.3em] opacity-40 mb-1">{s.label}</div>
+                  <div className="text-sm font-black text-white tracking-tight">{s.value}</div>
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Ledger Architecture */}
+        {/* Ledger */}
         <div className="space-y-8">
           <div className="flex items-center justify-between px-4">
             <h2 className="text-2xl font-black text-white tracking-tighter uppercase flex items-center gap-4">
@@ -325,42 +417,58 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
             ) : (
               Object.keys(groupedByDay).sort((a, b) => b.localeCompare(a)).map((day) => {
                 const dayEntries = groupedByDay[day];
+                const dayCuts = dayEntries.reduce((a, c) => a + (c.cuts || 0), 0);
                 return (
-                  <div key={day} className="space-y-5">
-                    <div className="flex items-center gap-5 px-4">
-                      <div className="h-[2px] w-8 bg-accent shadow-glow" />
-                      <span className="text-[11px] font-black text-text-dim uppercase tracking-[0.4em] italic">
+                  <div key={day} className="space-y-4">
+                    {/* Day header */}
+                    <div className="flex items-center gap-4 px-2">
+                      <div className="h-[2px] w-6 bg-accent shadow-glow shrink-0" />
+                      <span className="text-[11px] font-black text-text-dim uppercase tracking-[0.4em] italic whitespace-nowrap">
                         {format(new Date(day + 'T12:00:00'), "dd.MMMM", { locale: ptBR })}
                       </span>
-                      <div className="h-[2px] flex-1 bg-white/5" />
+                      <div className="h-[1px] flex-1 bg-white/5" />
+                      {/* Cortes badge per day */}
+                      {dayCuts > 0 && (
+                        <div className="flex items-center gap-1.5 bg-accent/10 border border-accent/20 rounded-full px-3 py-1 shrink-0">
+                          <Scissors size={9} className="text-accent" />
+                          <span className="text-[9px] font-black text-accent uppercase tracking-wider">Cortes · {dayCuts}</span>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {dayEntries.map((entry, idx) => (
                         <motion.div 
                           key={entry.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.05 }}
-                          className="premium-card p-6 flex items-center justify-between group interactive-button hover:bg-white/[0.03]"
+                          className="premium-card p-5 flex items-center justify-between group interactive-button hover:bg-white/[0.03]"
                         >
-                          <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-14 h-14 rounded-2xl bg-bg flex items-center justify-center text-accent border border-white/5 group-hover:border-accent/40 shadow-inner shrink-0">
-                              <CreditCard size={22} />
+                          <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="w-12 h-12 rounded-2xl bg-bg flex items-center justify-center text-accent border border-white/5 group-hover:border-accent/40 shadow-inner shrink-0">
+                              <CreditCard size={20} />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="text-base font-black text-white uppercase tracking-tight truncate mb-1">{entry.description}</div>
-                              <div className="text-lg font-black text-accent leading-none truncate" title={entry.amount.toLocaleString('pt-BR')}>
+                              <div className="text-sm font-black text-white uppercase tracking-tight truncate">{entry.description}</div>
+                              <div className="text-base font-black text-accent leading-tight truncate">
                                 R$ {entry.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                               </div>
+                              {/* Cortes per entry */}
+                              {entry.cuts && entry.cuts > 0 && (
+                                <div className="flex items-center gap-1.5 mt-1.5">
+                                  <Scissors size={9} className="text-text-dim/60" />
+                                  <span className="text-[9px] font-black text-text-dim/60 uppercase tracking-widest">Cortes · {entry.cuts}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <button 
                             onClick={(e) => handleDelete(entry.id, e)}
-                            className="w-10 h-10 bg-accent/5 text-accent rounded-xl flex items-center justify-center opacity-40 group-hover:opacity-100 hover:bg-accent hover:text-white transition-all shadow-xl interactive-button shrink-0"
+                            className="w-9 h-9 bg-accent/5 text-accent rounded-xl flex items-center justify-center opacity-30 group-hover:opacity-100 hover:bg-accent hover:text-white transition-all interactive-button shrink-0 ml-3"
                             title="Remover Registro"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={15} />
                           </button>
                         </motion.div>
                       ))}
@@ -373,7 +481,7 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
         </div>
       </div>
 
-      {/* Asset Injection Modal */}
+      {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -407,8 +515,9 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-7">
+                {/* Valor */}
+                <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim ml-4 opacity-50">Valor da Transação</label>
                   <div className="relative">
                     <span className="absolute left-8 top-1/2 -translate-y-1/2 font-black text-accent text-3xl">R$</span>
@@ -425,7 +534,8 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
                   </div>
                 </div>
                 
-                <div className="space-y-4">
+                {/* Descrição */}
+                <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim ml-4 opacity-50">Descrição de Identidade</label>
                   <input
                     type="text"
@@ -437,7 +547,34 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
                   />
                 </div>
 
-                <div className="space-y-4">
+                {/* Custos do Dia — Cortes */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim ml-4 opacity-50 flex items-center gap-2">
+                    <Scissors size={11} />
+                    Custos do Dia — Cortes Feitos
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                      <Scissors size={16} className="text-accent/60" />
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={cuts}
+                      onChange={(e) => setCuts(e.target.value)}
+                      placeholder="0"
+                      className="w-full h-16 bg-bg border border-white/5 rounded-2xl pl-14 pr-8 outline-none focus:border-accent font-black text-2xl tracking-widest transition-all shadow-inner placeholder:opacity-20"
+                    />
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[9px] font-black text-text-dim/40 uppercase tracking-widest">vídeos</span>
+                  </div>
+                  <p className="text-[9px] text-text-dim/30 font-black uppercase tracking-wider ml-4">
+                    Opcional · Aparecerá no histórico e no gráfico
+                  </p>
+                </div>
+
+                {/* Data */}
+                <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim ml-4 opacity-50">Carimbo de Tempo do Nexus</label>
                   <input
                     type="date"
@@ -450,7 +587,7 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: any) => void
 
                 <button
                   type="submit"
-                  className="w-full h-20 bg-white text-black rounded-[2rem] font-black text-xs uppercase tracking-[0.5em] hover:bg-white/90 transition-all shadow-2xl active:scale-[0.98] mt-6 interactive-button"
+                  className="w-full h-20 bg-white text-black rounded-[2rem] font-black text-xs uppercase tracking-[0.5em] hover:bg-white/90 transition-all shadow-2xl active:scale-[0.98] mt-4 interactive-button"
                 >
                   Autorizar Injeção
                 </button>
