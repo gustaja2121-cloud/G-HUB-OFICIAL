@@ -12,20 +12,21 @@ import {
   Loader2,
   Lock,
   Trophy,
+  Bot,
 } from 'lucide-react';
 import Notes from './components/Notes';
 import Login from './components/Login';
 import Finance from './components/Finance';
 import Accounts from './components/Accounts';
 import Ranking from './components/Ranking';
-
+import Jarvis from './components/Jarvis';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/Toast';
 import { useAuth } from './lib/AuthContext';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
-type Tab = 'notes' | 'finance' | 'accounts' | 'ranking';
+type Tab = 'notes' | 'finance' | 'accounts' | 'ranking' | 'jarvas';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -56,6 +57,7 @@ export default function App() {
   const navItems = [
     { id: 'finance', label: '🏦 FINANCEIRO', icon: <DollarSign size={20} /> },
     { id: 'ranking', label: '🏆 PAINEL VIEW', icon: <Trophy size={20} /> },
+    { id: 'jarvas', label: '🤖 JARVAS', icon: <Bot size={20} /> },
     { id: 'accounts', label: '🛡️ CONTAS', icon: <Lock size={20} /> },
     { id: 'notes', label: '📑 NOTAS', icon: <StickyNote size={20} /> },
   ] as const;
@@ -198,7 +200,11 @@ export default function App() {
                 <Ranking onNavigate={setActiveTab} />
               </motion.div>
             )}
-
+            {activeTab === 'jarvas' && (
+              <motion.div key="jarvas" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto">
+                <Jarvis />
+              </motion.div>
+            )}
             {activeTab === 'accounts' && (
               <motion.div key="accounts" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto">
                 <Accounts onNavigate={setActiveTab} />
