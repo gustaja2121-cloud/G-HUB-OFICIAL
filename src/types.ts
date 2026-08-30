@@ -12,6 +12,7 @@ export interface DailyChecklistTask {
   title: string;
   completed: boolean;
   type: 'post' | 'edit' | 'idea' | 'other';
+  userId?: string;
 }
 
 export interface VideoChecklistStep {

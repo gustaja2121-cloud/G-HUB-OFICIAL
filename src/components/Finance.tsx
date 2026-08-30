@@ -50,6 +50,107 @@ import {
 
 const OVERVIEW_ID = 'overview-geral';
 
+interface CalculatorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialCompId: string | null;
+  competitions: Competition[];
+  entries: FinanceEntry[];
+}
+
+function CalculatorModal({
+  isOpen,
+  onClose,
+}: CalculatorModalProps) {
+  const [cuts, setCuts] = useState<string>('100');
+  const [viewsPerCut, setViewsPerCut] = useState<string>('10000');
+  const [rpm, setRpm] = useState<string>('0.15');
+
+  if (!isOpen) return null;
+
+  const totalCuts = parseFloat(cuts) || 0;
+  const totalViews = totalCuts * (parseFloat(viewsPerCut) || 0);
+  const totalRpm = parseFloat(rpm) || 0;
+  const projectedRevenue = (totalViews / 1000) * totalRpm;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[100]"
+        >
+          <motion.div
+            initial={{ scale: 0.96, y: 10 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.96, y: 10 }}
+            className="bg-[#141419] border border-white/10 rounded-2xl p-6 sm:p-8 max-w-md w-full relative shadow-2xl space-y-6"
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-text-dim hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X size={15} />
+            </button>
+            <div className="flex items-center gap-2">
+              <Calculator size={20} className="text-accent" />
+              <div>
+                <h3 className="text-lg font-black text-white">Calculadora de Projeção</h3>
+                <p className="text-[10px] text-text-dim uppercase tracking-wider font-semibold">Simule ganhos por visualizações e RPM</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-wider text-text-dim">Quantidade de Cortes / Vídeos</label>
+                <input
+                  type="number"
+                  value={cuts}
+                  onChange={(e) => setCuts(e.target.value)}
+                  className="w-full h-12 bg-white/[0.04] border border-white/8 rounded-xl px-4 outline-none focus:border-accent/50 font-black text-white text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-wider text-text-dim">Média de Views por Corte</label>
+                <input
+                  type="number"
+                  value={viewsPerCut}
+                  onChange={(e) => setViewsPerCut(e.target.value)}
+                  className="w-full h-12 bg-white/[0.04] border border-white/8 rounded-xl px-4 outline-none focus:border-accent/50 font-black text-white text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-wider text-text-dim">RPM Estimado (R$ por 1.000 views)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={rpm}
+                  onChange={(e) => setRpm(e.target.value)}
+                  className="w-full h-12 bg-white/[0.04] border border-white/8 rounded-xl px-4 outline-none focus:border-accent/50 font-black text-white text-sm"
+                />
+              </div>
+
+              <div className="p-4 bg-accent/10 border border-accent/20 rounded-xl space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-accent">Faturamento Estimado</span>
+                <p className="text-2xl font-black text-white">
+                  R$ {projectedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <p className="text-[10px] text-text-dim font-medium">
+                  Total de {totalViews.toLocaleString('pt-BR')} visualizações acumuladas
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function Finance({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const { showToast } = useToast();
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
@@ -64,6 +165,10 @@ export default function Finance({ onNavigate }: { onNavigate: (tab: string) => v
   const [newCompStartDate, setNewCompStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newCompEndDate, setNewCompEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newCompTargetAmount, setNewCompTargetAmount] = useState('');
+
+  // Calculator Modal State
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+  const [calcCompId, setCalcCompId] = useState<string | null>(null);
 
   // Edit Meta Modal State
   const [isEditingMetaModalOpen, setIsEditingMetaModalOpen] = useState(false);
