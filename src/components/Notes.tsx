@@ -37,8 +37,8 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
   const loadAll = async () => {
     try {
       const data = await storage.getNotes();
-      // filtra notas de arena e checklists de vídeo antigos
-      const plain = data.filter(n => !n.title.startsWith('[ARENA_DATA]') && !n.title.startsWith(CHECKLIST_PREFIX));
+      // filtra notas de sistema (financeiro, competições, jarvas, arena, etc)
+      const plain = data.filter(n => !n.title.startsWith('['));
       setNotes(plain.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (e) {
       console.error(e);
@@ -94,7 +94,7 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-24 pt-10">
       {/* HEADER */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-surface/30 backdrop-blur-3xl border border-white/5 p-10 rounded-[3rem]">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-[#141414] border border-white/5 p-10 rounded-[3rem]">
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 bg-accent rounded-[2rem] flex items-center justify-center text-white border border-white/10 shadow-2xl shadow-accent/30">
             <StickyNote size={36} />
@@ -128,7 +128,7 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
             placeholder="BUSCAR ANOTAÇÕES..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full h-16 bg-surface/50 backdrop-blur-3xl border border-white/5 rounded-3xl pl-16 pr-6 focus:outline-none focus:border-accent transition-all text-xs font-black uppercase tracking-[0.3em] placeholder:opacity-20 shadow-inner"
+            className="w-full h-16 bg-[#1a1a1a] border border-white/5 rounded-3xl pl-16 pr-6 focus:outline-none focus:border-accent transition-all text-xs font-black uppercase tracking-[0.3em] placeholder:opacity-20 shadow-inner"
           />
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-surface/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-10 group relative flex flex-col h-full hover:border-accent/30 transition-all duration-300 hover:shadow-[0_0_40px_rgba(230,57,70,0.08)]"
+                className="bg-[#151515] border border-white/5 rounded-[2.5rem] p-10 group relative flex flex-col h-full hover:border-accent/30 transition-all duration-300 hover:shadow-[0_0_40px_rgba(230,57,70,0.08)]"
               >
                 <div className="flex justify-between items-start mb-8">
                   <div className="flex items-center gap-3">
@@ -203,7 +203,7 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
       <AnimatePresence>
         {noteToDelete && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setNoteToDelete(null)} className="absolute inset-0 bg-black/80 backdrop-blur-3xl" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setNoteToDelete(null)} className="absolute inset-0 bg-black/90" />
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-surface border border-white/10 w-full max-w-md rounded-[3rem] p-12 relative z-10 shadow-2xl text-center">
               <div className="w-20 h-20 bg-accent/20 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-accent/20">
                 <Trash2 className="text-accent" size={36} />
@@ -223,7 +223,7 @@ export default function Notes({ onNavigate }: { onNavigate: (tab: any) => void }
       <AnimatePresence>
         {noteModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeNoteModal} className="absolute inset-0 bg-black/80 backdrop-blur-3xl" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeNoteModal} className="absolute inset-0 bg-black/90" />
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 30 }} className="bg-surface border border-white/10 w-full max-w-2xl rounded-[4rem] p-16 relative z-10 shadow-2xl">
               <button onClick={closeNoteModal} className="absolute top-10 right-10 w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-text-dim hover:text-white hover:bg-accent/10 transition-all">
                 <X size={26} />

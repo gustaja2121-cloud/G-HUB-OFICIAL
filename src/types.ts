@@ -28,6 +28,15 @@ export interface VideoChecklist {
   createdAt: string;
 }
 
+export interface Competition {
+  id: string;
+  name: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  targetAmount?: number; // Meta de faturamento em R$
+  createdAt: string; // ISO string
+}
+
 export interface FinanceEntry {
   id: string;
   amount: number;
@@ -35,6 +44,11 @@ export interface FinanceEntry {
   date: string;
   accountId?: string;
   cuts?: number;
+  views?: number;
+  likes?: number;
+  paymentType?: 'diario' | 'mensal';
+  competitionId?: string;
+  sourceCompetitionId?: string;
 }
 
 export interface UserLevel {

@@ -135,11 +135,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
 
   if (loading || !perf) return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full"
-      />
+      <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
     </div>
   );
 
@@ -453,7 +449,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
                         <motion.div 
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="bg-surface/90 backdrop-blur-2xl border border-white/10 p-6 rounded-3xl shadow-premium relative overflow-hidden"
+                          className="bg-[#141414] border border-white/10 p-6 rounded-3xl shadow-premium relative overflow-hidden"
                         >
                           <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
                           <p className="text-[10px] font-black text-text-dim uppercase tracking-widest mb-3">{label}</p>
@@ -610,7 +606,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: any) => vo
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
-                        <div className="bg-surface/95 backdrop-blur-3xl border border-white/10 p-6 rounded-3xl shadow-premium min-w-[240px]">
+                        <div className="bg-[#141414] border border-white/10 p-6 rounded-3xl shadow-premium min-w-[240px]">
                           <p className="text-[10px] font-black text-text-dim uppercase tracking-widest mb-4 border-b border-white/5 pb-2">{label}</p>
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">

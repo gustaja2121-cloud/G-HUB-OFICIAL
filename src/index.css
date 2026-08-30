@@ -39,7 +39,7 @@
     @apply bg-surface border border-border rounded-4xl p-8 transition-all duration-300 hover:border-accent/30 hover:shadow-premium relative overflow-hidden;
   }
   .premium-blur {
-    @apply backdrop-blur-xl bg-surface/80 border border-white/5;
+    @apply bg-[#161616] border border-white/5;
   }
   .interactive-button {
     @apply transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
@@ -51,8 +51,7 @@
 
 /* Glassmorphism */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
+  background: rgba(20, 20, 20, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 

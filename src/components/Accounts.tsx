@@ -163,11 +163,7 @@ export default function Accounts() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-        className="w-16 h-16 rounded-full border-2 border-accent/20 border-t-accent shadow-glow"
-      />
+      <div className="w-16 h-16 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
       <p className="text-[10px] font-black uppercase tracking-[0.6em] text-accent animate-pulse">Sincronizando Nexus...</p>
     </div>
   );
@@ -176,20 +172,12 @@ export default function Accounts() {
     <div className="max-w-7xl mx-auto space-y-12 pb-32 pt-10">
       {/* Header Premium */}
       <header className="relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-accent/20 to-transparent blur-2xl opacity-50 transition-opacity group-hover:opacity-100" />
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-10 bg-surface/40 backdrop-blur-3xl border border-white/5 p-12 rounded-[3.5rem] shadow-premium">
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-10 bg-[#141414] border border-white/5 p-12 rounded-[3.5rem] shadow-premium">
           <div className="flex items-center gap-8">
             <div className="relative">
-              <div className="absolute -inset-4 bg-accent/20 blur-xl rounded-full animate-pulse" />
               <div className="w-24 h-24 bg-accent rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl border border-white/10 relative overflow-hidden group/icon">
                 <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/10" />
                 <Lock size={44} className="relative z-10 group-hover/icon:scale-110 transition-transform duration-500" />
-                <motion.div 
-                  initial={false}
-                  animate={{ y: [0, -100] }}
-                  transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 3 }}
-                  className="absolute inset-0 bg-white/20 -skew-y-12 pointer-events-none"
-                />
               </div>
             </div>
             <div>
@@ -365,7 +353,7 @@ export default function Accounts() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeModal}
-              className="absolute inset-0 bg-black/95 backdrop-blur-3xl"
+              className="absolute inset-0 bg-black/95"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 50, filter: "blur(10px)" }}

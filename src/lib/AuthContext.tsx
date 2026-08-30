@@ -14,18 +14,25 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: () => Promise<void>;
+  loginGuest: () => void;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('ghub_guest_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
+      if (u) {
+        setUser(u);
+        localStorage.removeItem('ghub_guest_user');
+      }
       setLoading(false);
       
       if (u) {
@@ -55,12 +62,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithPopup(auth, provider);
   };
 
+  const loginGuest = () => {
+    const guestUser = {
+      uid: 'guest-local-user',
+      email: 'criador@g-hub.com',
+      displayName: 'Criador G-HUB',
+      emailVerified: true,
+      isAnonymous: false,
+    } as unknown as User;
+    setUser(guestUser);
+    localStorage.setItem('ghub_guest_user', JSON.stringify(guestUser));
+  };
+
   const logout = async () => {
-    await signOut(auth);
+    localStorage.removeItem('ghub_guest_user');
+    setUser(null);
+    await signOut(auth).catch(() => {});
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginGuest, logout }}>
       {children}
     </AuthContext.Provider>
   );

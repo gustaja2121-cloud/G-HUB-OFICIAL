@@ -31,26 +31,297 @@ export default function Jarvis() {
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>('');
   
   // Voice Recognition states
   const [isListening, setIsListening] = useState(false);
+  const [isVoiceFullscreen, setIsVoiceFullscreen] = useState(false);
   
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fullscreenCanvasRef = useRef<HTMLCanvasElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const isSpeakingRef = useRef(false);
   const stateRef = useRef<JarvisState>('idle');
-  
+
   // Keep stateRef in sync to access in WebGL loop
   useEffect(() => {
     stateRef.current = state;
+    // Auto-exit fullscreen when conversation is done
+    if (state === 'idle') {
+      // Give a small delay so user sees the atom go back to idle before closing
+      const t = setTimeout(() => setIsVoiceFullscreen(false), 1200);
+      return () => clearTimeout(t);
+    }
   }, [state]);
 
-  // Load API Key, messages, and facts on mount
+  // 3D Three.js Instance Creator
+  const initThreeInstance = (canvas: HTMLCanvasElement) => {
+    const width = canvas.clientWidth || canvas.offsetWidth || 300;
+    const height = canvas.clientHeight || canvas.offsetHeight || 300;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    camera.position.z = 4.2;
+
+    // ---- CORE sphere: 1200 points ----
+    const CORE_COUNT = 1200;
+    const corePositions = new Float32Array(CORE_COUNT * 3);
+    const corePhases = new Float32Array(CORE_COUNT);
+    const coreR = new Float32Array(CORE_COUNT);
+    for (let i = 0; i < CORE_COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = 0.38 + Math.random() * 0.14;
+      coreR[i] = r;
+      corePositions[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+      corePositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      corePositions[i * 3 + 2] = r * Math.cos(phi);
+      corePhases[i] = Math.random() * Math.PI * 2;
+    }
+    const coreGeom = new THREE.BufferGeometry();
+    const corePosAttr = new THREE.BufferAttribute(corePositions, 3);
+    corePosAttr.setUsage(THREE.DynamicDrawUsage);
+    coreGeom.setAttribute('position', corePosAttr);
+    const coreMat = new THREE.PointsMaterial({
+      color: 0x00d4ff,
+      size: 0.025,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const corePoints = new THREE.Points(coreGeom, coreMat);
+    scene.add(corePoints);
+
+    // ---- RING 1 – horizontal orbit: 600 points ----
+    const R1_COUNT = 600;
+    const ring1Phases = new Float32Array(R1_COUNT);
+    const ring1R = new Float32Array(R1_COUNT);
+    const ring1Pos = new Float32Array(R1_COUNT * 3);
+    for (let i = 0; i < R1_COUNT; i++) {
+      ring1Phases[i] = (i / R1_COUNT) * Math.PI * 2 + Math.random() * 0.08;
+      ring1R[i] = 1.22 + Math.random() * 0.06;
+      ring1Pos[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
+    }
+    const ring1Geom = new THREE.BufferGeometry();
+    const ring1PosAttr = new THREE.BufferAttribute(ring1Pos, 3);
+    ring1PosAttr.setUsage(THREE.DynamicDrawUsage);
+    ring1Geom.setAttribute('position', ring1PosAttr);
+    const ring1Mat = new THREE.PointsMaterial({ color: 0x00d4ff, size: 0.018, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ring1Points = new THREE.Points(ring1Geom, ring1Mat);
+    scene.add(ring1Points);
+
+    // ---- RING 2 – vertical orbit: 500 points ----
+    const R2_COUNT = 500;
+    const ring2Phases = new Float32Array(R2_COUNT);
+    const ring2R = new Float32Array(R2_COUNT);
+    const ring2Pos = new Float32Array(R2_COUNT * 3);
+    for (let i = 0; i < R2_COUNT; i++) {
+      ring2Phases[i] = (i / R2_COUNT) * Math.PI * 2 + Math.random() * 0.08;
+      ring2R[i] = 1.35 + Math.random() * 0.06;
+      ring2Pos[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+    }
+    const ring2Geom = new THREE.BufferGeometry();
+    const ring2PosAttr = new THREE.BufferAttribute(ring2Pos, 3);
+    ring2PosAttr.setUsage(THREE.DynamicDrawUsage);
+    ring2Geom.setAttribute('position', ring2PosAttr);
+    const ring2Mat = new THREE.PointsMaterial({ color: 0x00d4ff, size: 0.016, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ring2Points = new THREE.Points(ring2Geom, ring2Mat);
+    scene.add(ring2Points);
+
+    // ---- RING 3 – diagonal orbit: 400 points ----
+    const R3_COUNT = 400;
+    const ring3Phases = new Float32Array(R3_COUNT);
+    const ring3R = new Float32Array(R3_COUNT);
+    const ring3Pos = new Float32Array(R3_COUNT * 3);
+    for (let i = 0; i < R3_COUNT; i++) {
+      ring3Phases[i] = (i / R3_COUNT) * Math.PI * 2 + Math.random() * 0.08;
+      ring3R[i] = 1.48 + Math.random() * 0.06;
+    }
+    const ring3Geom = new THREE.BufferGeometry();
+    const ring3PosAttr = new THREE.BufferAttribute(ring3Pos, 3);
+    ring3PosAttr.setUsage(THREE.DynamicDrawUsage);
+    ring3Geom.setAttribute('position', ring3PosAttr);
+    const ring3Mat = new THREE.PointsMaterial({ color: 0x00d4ff, size: 0.014, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ring3Points = new THREE.Points(ring3Geom, ring3Mat);
+    scene.add(ring3Points);
+
+    // ---- DUST – ambient floating particles: 800 points ----
+    const DUST_COUNT = 800;
+    const dustPos = new Float32Array(DUST_COUNT * 3);
+    const dustPhases = new Float32Array(DUST_COUNT);
+    const dustBasePos = new Float32Array(DUST_COUNT * 3);
+    for (let i = 0; i < DUST_COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = 0.6 + Math.random() * 1.1;
+      dustBasePos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+      dustBasePos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      dustBasePos[i * 3 + 2] = r * Math.cos(phi);
+      dustPhases[i] = Math.random() * Math.PI * 2;
+    }
+    const dustGeom = new THREE.BufferGeometry();
+    const dustPosAttr = new THREE.BufferAttribute(dustPos, 3);
+    dustPosAttr.setUsage(THREE.DynamicDrawUsage);
+    dustGeom.setAttribute('position', dustPosAttr);
+    const dustMat = new THREE.PointsMaterial({ color: 0x0099cc, size: 0.012, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false });
+    const dustPoints = new THREE.Points(dustGeom, dustMat);
+    scene.add(dustPoints);
+
+    const clock = new THREE.Clock();
+    let animationFrameId: number;
+
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      const time = clock.getElapsedTime();
+      const currentState = stateRef.current;
+
+      // State-based config
+      let coreColor: number, ringColor: number, ringSpeed: number, coreOpacity: number;
+      if (currentState === 'listening') {
+        coreColor = 0x00ffaa; ringColor = 0x00ffaa; ringSpeed = 2.2; coreOpacity = 1.0;
+      } else if (currentState === 'thinking') {
+        coreColor = 0xffcc00; ringColor = 0xffcc00; ringSpeed = 3.5; coreOpacity = 0.95;
+      } else if (currentState === 'speaking') {
+        coreColor = 0xff3355; ringColor = 0xff3355; ringSpeed = 2.5; coreOpacity = 1.0;
+      } else {
+        coreColor = 0x00d4ff; ringColor = 0x00d4ff; ringSpeed = 1.0; coreOpacity = 0.9;
+      }
+
+      coreMat.color.setHex(coreColor);
+      ring1Mat.color.setHex(ringColor);
+      ring2Mat.color.setHex(ringColor);
+      ring3Mat.color.setHex(ringColor);
+
+      // Animate core – pulse effect
+      const cp = corePosAttr.array as Float32Array;
+      for (let i = 0; i < CORE_COUNT; i++) {
+        const phase = corePhases[i];
+        let pulse = 1.0 + Math.sin(time * 2.5 + phase) * 0.06;
+        if (currentState === 'speaking') pulse += Math.sin(time * 14 + phase) * 0.18;
+        if (currentState === 'listening') pulse += Math.sin(time * 7 + phase) * 0.10;
+        const r = coreR[i] * pulse;
+        const ox = corePositions[i * 3];
+        const oy = corePositions[i * 3 + 1];
+        const oz = corePositions[i * 3 + 2];
+        const len = Math.sqrt(ox*ox + oy*oy + oz*oz) || 1;
+        cp[i * 3]     = (ox / len) * r;
+        cp[i * 3 + 1] = (oy / len) * r;
+        cp[i * 3 + 2] = (oz / len) * r;
+      }
+      corePosAttr.needsUpdate = true;
+
+      // Animate Ring 1
+      const r1p = ring1PosAttr.array as Float32Array;
+      for (let i = 0; i < R1_COUNT; i++) {
+        const angle = ring1Phases[i] + time * 0.28 * ringSpeed;
+        const r = ring1R[i];
+        r1p[i * 3]     = r * Math.cos(angle);
+        r1p[i * 3 + 2] = r * Math.sin(angle);
+      }
+      ring1PosAttr.needsUpdate = true;
+
+      // Animate Ring 2
+      const r2p = ring2PosAttr.array as Float32Array;
+      for (let i = 0; i < R2_COUNT; i++) {
+        const angle = ring2Phases[i] - time * 0.20 * ringSpeed;
+        const r = ring2R[i];
+        r2p[i * 3]     = r * Math.cos(angle);
+        r2p[i * 3 + 1] = r * Math.sin(angle);
+      }
+      ring2PosAttr.needsUpdate = true;
+
+      // Animate Ring 3
+      const r3p = ring3PosAttr.array as Float32Array;
+      for (let i = 0; i < R3_COUNT; i++) {
+        const angle = ring3Phases[i] + time * 0.16 * ringSpeed;
+        const r = ring3R[i];
+        r3p[i * 3]     = r * Math.cos(angle);
+        r3p[i * 3 + 1] = r * Math.sin(angle) * 0.707;
+        r3p[i * 3 + 2] = r * Math.sin(angle) * 0.707;
+      }
+      ring3PosAttr.needsUpdate = true;
+
+      // Animate dust
+      const dp = dustPosAttr.array as Float32Array;
+      for (let i = 0; i < DUST_COUNT; i++) {
+        const drift = Math.sin(time * 0.4 + dustPhases[i]) * 0.04;
+        dp[i * 3]     = dustBasePos[i * 3]     + drift;
+        dp[i * 3 + 1] = dustBasePos[i * 3 + 1] + Math.cos(time * 0.3 + dustPhases[i]) * 0.04;
+        dp[i * 3 + 2] = dustBasePos[i * 3 + 2] + drift;
+      }
+      dustPosAttr.needsUpdate = true;
+
+      // Gentle global rotation
+      const groupRotY = time * 0.04;
+      const groupRotX = Math.sin(time * 0.1) * 0.12;
+      [corePoints, ring1Points, ring2Points, ring3Points, dustPoints].forEach(obj => {
+        obj.rotation.y = groupRotY;
+        obj.rotation.x = groupRotX;
+      });
+
+      renderer.render(scene, camera);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    const handleResize = () => {
+      const w = canvas.clientWidth || canvas.offsetWidth || 300;
+      const h = canvas.clientHeight || canvas.offsetHeight || 300;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', handleResize);
+
+    return {
+      cleanup: () => {
+        cancelAnimationFrame(animationFrameId);
+        window.removeEventListener('resize', handleResize);
+        coreGeom.dispose(); coreMat.dispose();
+        ring1Geom.dispose(); ring1Mat.dispose();
+        ring2Geom.dispose(); ring2Mat.dispose();
+        ring3Geom.dispose(); ring3Mat.dispose();
+        dustGeom.dispose(); dustMat.dispose();
+        renderer.dispose();
+      },
+      resize: handleResize,
+    };
+  };
+
+  // Initialize Home Screen WebGL Canvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const instance = initThreeInstance(canvasRef.current);
+    return () => instance.cleanup();
+  }, []);
+
+  // Initialize Fullscreen Voice WebGL Canvas
+  useEffect(() => {
+    if (!isVoiceFullscreen || !fullscreenCanvasRef.current) return;
+    const instance = initThreeInstance(fullscreenCanvasRef.current);
+    const t = setTimeout(() => instance.resize(), 100);
+    return () => {
+      clearTimeout(t);
+      instance.cleanup();
+    };
+  }, [isVoiceFullscreen]);
+
+  // Load API Key, messages, facts and system voices on mount
   useEffect(() => {
     const savedKey = getGeminiApiKey();
     setApiKey(savedKey);
+
+    const savedVoice = localStorage.getItem('jarvas_voice_preference') || '';
+    setSelectedVoiceName(savedVoice);
 
     const loadData = async () => {
       const loadedMessages = await storage.getJarvasMessages();
@@ -59,6 +330,24 @@ export default function Jarvis() {
       setFacts(loadedFacts);
     };
     loadData();
+
+    // Populate available TTS voices in browser
+    const updateVoices = () => {
+      if (window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices();
+        const ptBr = voices.filter(v => 
+          v.lang.toLowerCase() === 'pt-br' || 
+          v.lang.toLowerCase().replace('_', '-') === 'pt-br' ||
+          v.lang.toLowerCase().startsWith('pt')
+        );
+        setAvailableVoices(ptBr);
+      }
+    };
+
+    updateVoices();
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
 
     // Initialize Web Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -109,268 +398,7 @@ export default function Jarvis() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 3D Three.js Particle Swarm Canvas Setup
-  useEffect(() => {
-    if (!canvasRef.current) return;
 
-    const width = canvasRef.current.clientWidth;
-    const height = canvasRef.current.clientHeight;
-
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      antialias: true,
-      alpha: true
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    // Scene
-    const scene = new THREE.Scene();
-
-    // Camera
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.z = 4.5;
-
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-
-    // Particle Swarm Configuration - Upgraded to Concentric Gyroscopic Rings (Stark HUD)
-    const count = 20000;
-    const geom = new THREE.BoxGeometry(0.015, 0.015, 0.015);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x00d2ff, // Neon Cyan
-      transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending
-    });
-
-    const mesh = new THREE.InstancedMesh(geom, mat, count);
-    scene.add(mesh);
-
-    // Distribute particles in gyroscopic rings and a central reactor core
-    const particles: {
-      type: 'core' | 'ring1' | 'ring2' | 'ring3' | 'radar';
-      x: number;
-      y: number;
-      z: number;
-      speed: number;
-      phase: number;
-      radius: number;
-    }[] = [];
-
-    for (let i = 0; i < count; i++) {
-      let type: 'core' | 'ring1' | 'ring2' | 'ring3' | 'radar' = 'core';
-      let x = 0, y = 0, z = 0;
-      const radiusVal = 1.0 + Math.random() * 0.4;
-
-      if (i < 6000) {
-        // Reactor Core Sphere
-        type = 'core';
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos((Math.random() * 2) - 1);
-        const r = 0.4 + Math.random() * 0.15;
-        x = r * Math.sin(phi) * Math.cos(theta);
-        y = r * Math.sin(phi) * Math.sin(theta);
-        z = r * Math.cos(phi);
-      } else if (i < 11000) {
-        // Ring 1 (Horizontal Orbit)
-        type = 'ring1';
-        const theta = Math.random() * Math.PI * 2;
-        const r = 1.25 + Math.random() * 0.05;
-        x = r * Math.cos(theta);
-        y = (Math.random() - 0.5) * 0.015;
-        z = r * Math.sin(theta);
-      } else if (i < 15500) {
-        // Ring 2 (Vertical Pitch Orbit)
-        type = 'ring2';
-        const theta = Math.random() * Math.PI * 2;
-        const r = 1.35 + Math.random() * 0.05;
-        x = r * Math.cos(theta);
-        y = r * Math.sin(theta);
-        z = (Math.random() - 0.5) * 0.015;
-      } else if (i < 18500) {
-        // Ring 3 (Diagonal Gyro Orbit)
-        type = 'ring3';
-        const theta = Math.random() * Math.PI * 2;
-        const r = 1.45 + Math.random() * 0.05;
-        const cos = Math.cos(theta);
-        const sin = Math.sin(theta);
-        x = r * cos;
-        y = r * sin * 0.707;
-        z = r * sin * 0.707;
-      } else {
-        // Radar Sweep Planar Dots
-        type = 'radar';
-        const theta = Math.random() * Math.PI * 2;
-        const r = 0.2 + Math.random() * 1.2;
-        x = r * Math.cos(theta);
-        y = r * Math.sin(theta);
-        z = (Math.random() - 0.5) * 0.01;
-      }
-
-      particles.push({
-        type,
-        x, y, z,
-        speed: 0.5 + Math.random() * 1.5,
-        phase: Math.random() * Math.PI * 2,
-        radius: radiusVal
-      });
-    }
-
-    const dummy = new THREE.Object3D();
-    const pColor = new THREE.Color();
-    const clock = new THREE.Clock();
-    let animationFrameId: number;
-
-    const animate = () => {
-      const time = clock.getElapsedTime();
-      const currentState = stateRef.current;
-
-      // Holographic Stark colors based on Jarvis state
-      let colorHex = 0x00d2ff; // Cyan (Idle)
-      let speedMult = 1.0;
-
-      if (currentState === 'listening') {
-        colorHex = 0x00ffaa; // Neon Green-Cyan
-        speedMult = 1.8;
-      } else if (currentState === 'thinking') {
-        colorHex = 0xffcc00; // Stark Gold
-        speedMult = 3.0;
-      } else if (currentState === 'speaking') {
-        colorHex = 0xff2a4b; // Stark Red
-        speedMult = 2.0;
-      }
-
-      for (let i = 0; i < count; i++) {
-        const p = particles[i];
-        let x = p.x;
-        let y = p.y;
-        let z = p.z;
-
-        if (p.type === 'core') {
-          // Pulse the core
-          const factor = 1.0 + Math.sin(time * 3 + p.phase) * 0.08;
-          if (currentState === 'speaking') {
-            const pulse = 1.0 + Math.sin(time * 18 + p.phase) * 0.25;
-            x = p.x * factor * pulse;
-            y = p.y * factor * pulse;
-            z = p.z * factor * pulse;
-          } else if (currentState === 'listening') {
-            const sonar = 1.0 + Math.sin(time * 10 + p.phase) * 0.15;
-            x = p.x * factor * sonar;
-            y = p.y * factor * sonar;
-            z = p.z * factor * sonar;
-          } else {
-            x = p.x * factor;
-            y = p.y * factor;
-            z = p.z * factor;
-          }
-        } else if (p.type === 'ring1') {
-          // Ring 1: Spin around Y-axis
-          const spinAngle = p.phase + time * 0.25 * speedMult;
-          const r = Math.sqrt(p.x * p.x + p.z * p.z);
-          let wave = 0;
-          if (currentState === 'speaking') {
-            wave = Math.sin(spinAngle * 8 + time * 12) * 0.12;
-          } else if (currentState === 'listening') {
-            wave = Math.sin(spinAngle * 4 + time * 6) * 0.08;
-          }
-          x = (r + wave) * Math.cos(spinAngle);
-          y = p.y + wave * 0.25;
-          z = (r + wave) * Math.sin(spinAngle);
-        } else if (p.type === 'ring2') {
-          // Ring 2: Spin around Z-axis
-          const spinAngle = p.phase - time * 0.18 * speedMult; // opposite rotation
-          const r = Math.sqrt(p.x * p.x + p.y * p.y);
-          let wave = 0;
-          if (currentState === 'speaking') {
-            wave = Math.cos(spinAngle * 8 + time * 12) * 0.12;
-          }
-          x = (r + wave) * Math.cos(spinAngle);
-          y = (r + wave) * Math.sin(spinAngle);
-          z = p.z + wave * 0.25;
-        } else if (p.type === 'ring3') {
-          // Ring 3: Spin diagonally
-          const spinAngle = p.phase + time * 0.2 * speedMult;
-          const r = Math.sqrt(p.x * p.x + (p.y * p.y + p.z * p.z));
-          let wave = 0;
-          if (currentState === 'speaking') {
-            wave = Math.sin(spinAngle * 6 + time * 12) * 0.1;
-          }
-          const cos = Math.cos(spinAngle);
-          const sin = Math.sin(spinAngle);
-          x = (r + wave) * cos;
-          y = (r + wave) * sin * 0.707;
-          z = (r + wave) * sin * 0.707;
-        } else if (p.type === 'radar') {
-          // Radar scan line sweeping through
-          const r = Math.sqrt(p.x * p.x + p.y * p.y);
-          const sweepAngle = (time * 0.8 * speedMult) % (Math.PI * 2);
-          const diff = Math.abs((Math.atan2(p.y, p.x) - sweepAngle + Math.PI * 2) % (Math.PI * 2));
-          const glow = Math.max(0, 1 - diff * 2.5);
-          x = p.x;
-          y = p.y;
-          z = p.z + glow * 0.18;
-        }
-
-        dummy.position.set(x, y, z);
-
-        // Resize and scaling based on state
-        let scale = 1.0;
-        if (p.type === 'core') {
-          if (currentState === 'thinking') {
-            scale = 0.7 + Math.sin(time * 8 + p.phase) * 0.1;
-          } else if (currentState === 'speaking') {
-            scale = 0.9 + Math.random() * 0.5;
-          }
-        } else {
-          if (currentState === 'thinking') {
-            scale = 0.8;
-          }
-        }
-        dummy.scale.set(scale, scale, scale);
-
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
-
-        pColor.setHex(colorHex);
-        mesh.setColorAt(i, pColor);
-      }
-
-      mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-
-      // Soft rotation of the overall group
-      mesh.rotation.y = time * 0.05;
-      mesh.rotation.x = time * 0.02;
-
-      renderer.render(scene, camera);
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    // Resize Handler
-    const handleResize = () => {
-      if (!canvasRef.current) return;
-      const w = canvasRef.current.clientWidth;
-      const h = canvasRef.current.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', handleResize);
-      geom.dispose();
-      mat.dispose();
-      renderer.dispose();
-    };
-  }, []);
 
   // Text-To-Speech (TTS) voice builder
   const speakText = (text: string) => {
@@ -382,46 +410,30 @@ export default function Jarvis() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Find pt-BR voice strictly first to avoid European Portuguese (Portugal)
     const voices = window.speechSynthesis.getVoices();
-    let ptBrVoices = voices.filter(v => 
-      v.lang.toLowerCase() === 'pt-br' || 
-      v.lang.toLowerCase().replace('_', '-') === 'pt-br'
-    );
+    let chosenVoice = voices.find(v => v.name === selectedVoiceName);
 
-    // Fallback to any Portuguese voice if no strict pt-BR is found
-    if (ptBrVoices.length === 0) {
-      ptBrVoices = voices.filter(v => v.lang.toLowerCase().startsWith('pt'));
-    }
-    
-    // Look for masculine Google / Microsoft / system voices
-    let maleVoice = ptBrVoices.find(v => 
-      v.name.toLowerCase().includes('daniel') || 
-      v.name.toLowerCase().includes('microsoft daniel') ||
-      v.name.toLowerCase().includes('google') ||
-      v.name.toLowerCase().includes('male') ||
-      v.name.toLowerCase().includes('homem') ||
-      v.name.toLowerCase().includes('masculino')
-    );
+    if (!chosenVoice) {
+      let ptBrVoices = voices.filter(v => 
+        v.lang.toLowerCase() === 'pt-br' || 
+        v.lang.toLowerCase().replace('_', '-') === 'pt-br'
+      );
+      if (ptBrVoices.length === 0) {
+        ptBrVoices = voices.filter(v => v.lang.toLowerCase().startsWith('pt'));
+      }
+      
+      // Prioritize fluid natural/online voices over robotic offline voices
+      let best = ptBrVoices.find(v => v.name.toLowerCase().includes('natural'));
+      if (!best) best = ptBrVoices.find(v => v.name.toLowerCase().includes('google'));
+      if (!best) best = ptBrVoices.find(v => !v.localService);
+      if (!best) best = ptBrVoices.find(v => v.name.toLowerCase().includes('daniel'));
+      if (!best) best = ptBrVoices[0];
 
-    // Do NOT choose female named voices if we want a male voice
-    if (maleVoice && (
-      maleVoice.name.toLowerCase().includes('female') || 
-      maleVoice.name.toLowerCase().includes('maria') || 
-      maleVoice.name.toLowerCase().includes('leticia') || 
-      maleVoice.name.toLowerCase().includes('francisca') || 
-      maleVoice.name.toLowerCase().includes('helena') ||
-      maleVoice.name.toLowerCase().includes('luciana')
-    )) {
-      maleVoice = undefined;
+      chosenVoice = best;
     }
 
-    if (!maleVoice && ptBrVoices.length > 0) {
-      maleVoice = ptBrVoices[0]; // Fallback to first available Brazilian Portuguese voice
-    }
-
-    if (maleVoice) {
-      utterance.voice = maleVoice;
+    if (chosenVoice) {
+      utterance.voice = chosenVoice;
     }
 
     // Keep normal rate and pitch to prevent robotic distortion
@@ -527,6 +539,7 @@ export default function Jarvis() {
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
+      setIsVoiceFullscreen(true);
       recognitionRef.current.start();
     }
   };
@@ -535,8 +548,9 @@ export default function Jarvis() {
     e.preventDefault();
     if (apiKey.trim()) {
       saveGeminiApiKey(apiKey.trim());
-      setShowSettings(false);
     }
+    localStorage.setItem('jarvas_voice_preference', selectedVoiceName);
+    setShowSettings(false);
   };
 
   const clearChatHistory = async () => {
@@ -554,6 +568,98 @@ export default function Jarvis() {
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-12rem)]">
+
+      {/* ── VOICE FULLSCREEN OVERLAY ── */}
+      <AnimatePresence>
+        {isVoiceFullscreen && (
+          <motion.div
+            key="voice-fullscreen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => { if (isListening && recognitionRef.current) recognitionRef.current.stop(); setIsVoiceFullscreen(false); }}
+              className="absolute top-6 right-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-text-dim hover:text-white hover:bg-white/10 transition-all z-10 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* State label top */}
+            <motion.div
+              key={state}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute top-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+            >
+              <span className="text-[9px] font-mono font-black text-text-dim/50 uppercase tracking-[0.5em]">Núcleo JARVAS v3.0</span>
+              <span className={`text-base font-black uppercase tracking-[0.3em] ${
+                state === 'listening' ? 'text-green-400' :
+                state === 'thinking' ? 'text-amber-400' :
+                state === 'speaking' ? 'text-accent' : 'text-blue-400'
+              }`}>
+                {state === 'idle' && 'Pronto / Aguardando'}
+                {state === 'listening' && 'Ouvindo...'}
+                {state === 'thinking' && 'Processando...'}
+                {state === 'speaking' && 'Respondendo...'}
+              </span>
+            </motion.div>
+
+            {/* Fullscreen Canvas — centred, large */}
+            <div className="relative flex items-center justify-center" style={{ width: 'min(80vw, 80vh)', height: 'min(80vw, 80vh)' }}>
+              {/* Animated rings */}
+              <div className="absolute inset-0 rounded-full border border-accent/10 animate-[spin_35s_linear_infinite] pointer-events-none" />
+              <div className="absolute inset-4 rounded-full border border-dashed border-accent/8 animate-[spin_50s_linear_infinite_reverse] pointer-events-none" />
+              <div className="absolute inset-[50px] rounded-full border border-accent/5 pointer-events-none" />
+              <div className="absolute inset-[100px] rounded-full border-2 border-double border-accent/12 animate-[spin_18s_linear_infinite] pointer-events-none" />
+              {/* Crosshair */}
+              <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-accent/8 pointer-events-none" />
+              <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-accent/8 pointer-events-none" />
+              {/* Scanning line */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent/30 shadow-[0_0_12px_rgba(230,57,70,0.5)] animate-[scan-line-laser_4s_linear_infinite] pointer-events-none" />
+              {/* Corner ticks */}
+              <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-accent/20 rounded-tl-3xl pointer-events-none" />
+              <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-accent/20 rounded-tr-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-accent/20 rounded-bl-3xl pointer-events-none" />
+              <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-accent/20 rounded-br-3xl pointer-events-none" />
+              {/* Target dot */}
+              <div className="absolute w-16 h-16 border border-accent/30 rounded-full flex items-center justify-center pointer-events-none animate-pulse">
+                <div className="w-2.5 h-2.5 bg-accent rounded-full animate-ping" />
+              </div>
+              {/* The actual THREE.js canvas for fullscreen */}
+              <canvas ref={fullscreenCanvasRef} className="w-full h-full z-10 relative" />
+            </div>
+
+            {/* Mic / Mute controls bottom */}
+            <div className="absolute bottom-10 flex items-center gap-6">
+              <button
+                onClick={toggleVoiceInput}
+                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-2xl border-2 cursor-pointer ${
+                  isListening
+                    ? 'bg-green-500/20 border-green-500 text-green-400 shadow-green-500/20 animate-pulse'
+                    : 'bg-white/5 border-white/10 text-text-dim hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {isListening ? <MicOff size={32} /> : <Mic size={32} />}
+              </button>
+              <button
+                onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all border cursor-pointer ${
+                  isVoiceEnabled
+                    ? 'bg-white/5 border-white/10 text-text-dim'
+                    : 'bg-accent/10 border-accent/20 text-accent'
+                }`}
+              >
+                {isVoiceEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes scan-line-laser {
           0% { top: 0%; opacity: 0; }
@@ -631,7 +737,10 @@ export default function Jarvis() {
             TELEM: OK
           </div>
 
-          <canvas ref={canvasRef} className="w-full h-full cursor-pointer z-10 relative" />
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full cursor-pointer z-10 relative"
+          />
         </div>
 
         {/* Visual feedback subtitle */}
@@ -696,10 +805,10 @@ export default function Jarvis() {
           {/* Scrolling messages list */}
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-30 select-none">
-                <Sparkles size={36} className="mb-4 text-accent" />
-                <p className="text-[11px] font-black uppercase tracking-[0.3em] max-w-[250px] leading-relaxed">
-                  "Olá, Senhor. Meu núcleo está ativo. Como posso ajudá-lo em seus negócios hoje?"
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-40 select-none">
+                <Sparkles size={32} className="mb-3 text-accent" />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] max-w-[220px] leading-relaxed text-text-dim">
+                  Núcleo ativo. Aguardando suas ordens, Senhor.
                 </p>
               </div>
             ) : (
@@ -835,14 +944,32 @@ export default function Jarvis() {
                   <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim ml-2 opacity-50">Sua Gemini API Key</label>
                   <input
                     type="password"
-                    required
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="Cole sua chave AI Studio aqui..."
                     className="w-full h-14 bg-bg border border-white/5 rounded-2xl px-6 outline-none focus:border-accent text-sm transition-all shadow-inner"
                   />
                   <p className="text-[9px] text-text-dim leading-relaxed px-2">
-                    A chave de API é armazenada de forma segura e local apenas no seu navegador. Você pode obter uma chave gratuita no Google AI Studio.
+                    Você pode obter uma chave gratuita no Google AI Studio.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim ml-2 opacity-50">Voz do Jarvis</label>
+                  <select
+                    value={selectedVoiceName}
+                    onChange={(e) => setSelectedVoiceName(e.target.value)}
+                    className="w-full h-14 bg-bg border border-white/5 rounded-2xl px-6 outline-none focus:border-accent text-sm transition-all shadow-inner text-text-dim"
+                  >
+                    <option value="">Daniel (Masculino Padrão)</option>
+                    {availableVoices.map((voice) => (
+                      <option key={voice.name} value={voice.name}>
+                        {voice.name.replace('Microsoft', '').replace('Google', '').replace('Speech Synthesis', '').trim()} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[9px] text-text-dim leading-relaxed px-2">
+                    Escolha a voz que preferir. As vozes nativas do Google/Microsoft são geralmente as mais fluidas e naturais.
                   </p>
                 </div>
 

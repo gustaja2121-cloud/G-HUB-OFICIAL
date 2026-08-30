@@ -34,7 +34,7 @@ export default function Ranking({ onNavigate }: { onNavigate: (tab: any) => void
     <div className="max-w-5xl mx-auto space-y-8 pb-24 pt-10">
 
       {/* HEADER */}
-      <header className="flex items-center gap-6 bg-surface/30 backdrop-blur-3xl border border-white/5 p-10 rounded-[3rem]">
+      <header className="flex items-center gap-6 bg-[#141414] border border-white/5 p-10 rounded-[3rem]">
         <div className="w-20 h-20 bg-accent rounded-[2rem] flex items-center justify-center text-white border border-white/10 shadow-2xl shadow-accent/30">
           <TrendingUp size={36} />
         </div>
